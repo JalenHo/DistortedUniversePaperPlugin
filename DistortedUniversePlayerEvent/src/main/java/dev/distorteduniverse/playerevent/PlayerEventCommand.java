@@ -169,7 +169,7 @@ public final class PlayerEventCommand implements TabExecutor {
         }
 
         PluginSettings.DeathSoundSettings sound = settingsService.settings().deathSound();
-        target.playSound(target.getLocation(), sound.sound(), sound.category(), sound.volume(), sound.pitch());
+        SoundEffectPlayer.play(target, target.getLocation(), sound.sound(), sound.category(), sound.volume(), sound.pitch());
         sender.sendMessage(PREFIX + "Played " + sound.sound() + " for " + target.getName() + ".");
     }
 

@@ -39,7 +39,7 @@ public record PluginSettings(
             ),
             new DeathKickSettings(
                 getBoolean(config, "death-kick.enabled", true),
-                getInt(config, "death-kick.delay-ticks", 1, 0, 1200),
+                getInt(config, "death-kick.delay-ticks", 0, 0, 1200),
                 getString(config, "death-kick.kick-message", "You died."),
                 getBoolean(config, "death-kick.show-leave-message", false),
                 getDouble(config, "death-kick.leave-radius", 64.0D, 0.0D, 100000.0D),

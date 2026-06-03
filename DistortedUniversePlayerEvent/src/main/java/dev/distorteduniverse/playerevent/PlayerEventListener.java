@@ -152,7 +152,8 @@ public final class PlayerEventListener implements Listener {
         Player player
     ) {
         for (Player recipient : recipientSelector.nearbyPlayers(deathLocation, deathSoundSettings.radius(), player, true)) {
-            recipient.playSound(
+            SoundEffectPlayer.play(
+                recipient,
                 deathLocation,
                 deathSoundSettings.sound(),
                 deathSoundSettings.category(),
@@ -164,8 +165,16 @@ public final class PlayerEventListener implements Listener {
 
     private void scheduleDeathKick(Player player, Location deathLocation, PluginSettings.DeathKickSettings deathKickSettings) {
         UUID playerId = player.getUniqueId();
+        if (pendingDeathKicks.containsKey(playerId)) {
+            return;
+        }
+
         pendingDeathKicks.put(playerId, new DeathKickContext(deathLocation.clone()));
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!pendingDeathKicks.containsKey(playerId)) {
+                return;
+            }
+
             Player onlinePlayer = Bukkit.getPlayer(playerId);
             if (onlinePlayer == null || !onlinePlayer.isOnline()) {
                 pendingDeathKicks.remove(playerId);

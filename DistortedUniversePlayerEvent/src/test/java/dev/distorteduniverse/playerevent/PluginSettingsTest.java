@@ -30,6 +30,7 @@ class PluginSettingsTest {
         assertEquals("<join_message>", settings.joinMessage().template());
 
         assertTrue(settings.deathKick().enabled());
+        assertEquals(0, settings.deathKick().delayTicks());
         assertFalse(settings.deathKick().showLeaveMessage());
         assertEquals("You died.", settings.deathKick().kickMessage());
     }

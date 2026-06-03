@@ -39,6 +39,15 @@ public final class SettingsService {
             return SettingResult.failure(exception.getMessage());
         }
 
+        if (normalizedPath.equals("death-sound.sound") && parsedValue instanceof String soundKey) {
+            if (SoundEffectPlayer.isMinecraftSoundKey(soundKey) && !SoundEffectPlayer.isKnownMinecraftSound(soundKey)) {
+                return SettingResult.failure(
+                    "Unknown vanilla sound: " + soundKey
+                        + ". Use a valid minecraft sound key or a custom non-minecraft namespace from a resource pack."
+                );
+            }
+        }
+
         plugin.getConfig().set(normalizedPath, parsedValue);
         settings = PluginSettings.from(plugin.getConfig());
         save();

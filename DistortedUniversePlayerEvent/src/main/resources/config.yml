@@ -27,7 +27,7 @@ join-message:
 
 death-kick:
   enabled: true
-  delay-ticks: 1
+  delay-ticks: 0
   kick-message: "You died."
   show-leave-message: false
   leave-radius: 64.0
