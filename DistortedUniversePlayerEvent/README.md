@@ -187,6 +187,40 @@ Message templates use MiniMessage and support:
 <quit_message>
 ```
 
+MiniMessage color and style tags are also supported:
+
+```text
+<black>
+<dark_blue>
+<dark_green>
+<dark_aqua>
+<dark_red>
+<dark_purple>
+<gold>
+<gray>
+<dark_gray>
+<blue>
+<green>
+<aqua>
+<red>
+<light_purple>
+<yellow>
+<white>
+<bold>
+<italic>
+<underlined>
+<strikethrough>
+<reset>
+```
+
+Examples:
+
+```text
+/duplayerevent set join-message.template <green><player_name></green> joined nearby
+/duplayerevent set leave-message.template <gray><italic><player_name> left nearby</italic></gray>
+/duplayerevent set death-message.template <red><bold><player_name></bold></red> died at <yellow><x> <y> <z></yellow>
+```
+
 Default templates preserve vanilla-looking messages:
 
 ```text
