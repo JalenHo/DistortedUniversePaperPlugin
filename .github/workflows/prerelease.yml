@@ -1,0 +1,93 @@
+name: Prerelease Plugins
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Git tag to create or update for the prerelease.
+        required: true
+        default: v0.9.0
+      release_name:
+        description: GitHub release title.
+        required: true
+        default: DistortedUniverse Plugins v0.9.0 for 1.21.11
+
+permissions:
+  contents: write
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    env:
+      MINECRAFT_VERSION: '1.21.11'
+      PAPER_API_VERSION: '1.21.11-R0.1-SNAPSHOT'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Verify 1.21.11 target
+        run: |
+          set -euo pipefail
+          grep -R "paper-api:${PAPER_API_VERSION}" DistortedUniversePlayerEvent/build.gradle.kts DistortedUniverseImmortal/build.gradle.kts
+          grep -R "api-version: '${MINECRAFT_VERSION}'" DistortedUniversePlayerEvent/src/main/resources/plugin.yml DistortedUniverseImmortal/src/main/resources/plugin.yml
+
+      - name: Build plugin jars
+        run: ./gradlew clean build
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: distorteduniverse-paper-plugins-${{ env.MINECRAFT_VERSION }}
+          path: |
+            DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar
+            DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar
+          if-no-files-found: error
+
+      - name: Write release notes
+        run: |
+          cat > release-notes.md <<'EOF'
+          Pre-release builds targeting Minecraft/Paper 1.21.11.
+
+          Assets:
+          - DistortedUniversePlayerEvent
+          - DistortedUniverseImmortal
+          EOF
+
+      - name: Create or update GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ inputs.tag_name }}
+          RELEASE_NAME: ${{ inputs.release_name }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release edit "${TAG_NAME}" \
+              --title "${RELEASE_NAME}" \
+              --notes-file release-notes.md \
+              --prerelease
+          else
+            gh release create "${TAG_NAME}" \
+              --title "${RELEASE_NAME}" \
+              --notes-file release-notes.md \
+              --target "${GITHUB_SHA}" \
+              --prerelease
+          fi
+
+          gh release upload "${TAG_NAME}" \
+            DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar \
+            DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar \
+            --clobber
