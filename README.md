@@ -4,13 +4,13 @@ Monorepo for DistortedUniverse PaperMC plugins.
 
 ## Plugins
 
-- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks for Minecraft/Paper `26.1.2`.
-- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor for Minecraft/Paper `26.1.2`.
+- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks for Minecraft/Paper `1.21.11`.
+- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor for Minecraft/Paper `1.21.11`.
 
 ## Requirements
 
-- Java `25`
-- Paper target: Minecraft `26.1.2`
+- Java `21`
+- Paper target: Minecraft `1.21.11`
 
 ## Build
 

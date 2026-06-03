@@ -1,14 +1,14 @@
 # DistortedUniversePlayerEvent
 
-A PaperMC server-side plugin for Minecraft `26.1.2`.
+A PaperMC server-side plugin for Minecraft `1.21.11`.
 
 The plugin scopes player death sounds, death messages, join messages, leave messages, and death-kick quit notices by distance. All feature modules can be changed live in game by an operator without restarting the server.
 
 ## Requirements
 
-- Minecraft / Paper `26.1.2`
-- Java `25`
-- Paper API `26.1.2`
+- Minecraft / Paper `1.21.11`
+- Java `21`
+- Paper API `1.21.11`
 
 ## Build
 

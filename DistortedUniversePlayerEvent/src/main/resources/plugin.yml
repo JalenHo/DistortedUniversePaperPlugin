@@ -1,7 +1,7 @@
 name: DistortedUniversePlayerEvent
 version: ${version}
 main: dev.distorteduniverse.playerevent.DistortedUniversePlayerEventPlugin
-api-version: '26.1.2'
+api-version: '1.21.11'
 description: Distance-scoped player event messages, death sounds, and death kicks.
 author: hokay
 commands:

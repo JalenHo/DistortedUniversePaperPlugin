@@ -1,14 +1,14 @@
 # DistortedUniverseImmortal
 
-A PaperMC server-side plugin for Minecraft `26.1.2`.
+A PaperMC server-side plugin for Minecraft `1.21.11`.
 
 The plugin lets operators mark specific players as immortal. Immortal players still take normal damage until the configured health floor is reached, then further damage is reduced so they do not drop below that amount.
 
 ## Requirements
 
-- Minecraft / Paper `26.1.2`
-- Java `25`
-- Paper API `26.1.2`
+- Minecraft / Paper `1.21.11`
+- Java `21`
+- Paper API `1.21.11`
 
 ## Build
 
