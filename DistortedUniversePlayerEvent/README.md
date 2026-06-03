@@ -21,13 +21,13 @@ Use the included Gradle wrapper:
 The plugin jar is created at:
 
 ```text
-DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-1.0.0.jar
+DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-0.9.0.jar
 ```
 
 ## Install
 
 1. Build the jar.
-2. Copy `DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-1.0.0.jar` into your Paper server's `plugins` folder.
+2. Copy `DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-0.9.0.jar` into your Paper server's `plugins` folder.
 3. Start or restart the server once.
 4. Configure live in game with `/duplayerevent`.
 

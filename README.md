@@ -25,6 +25,16 @@ Build one plugin:
 .\gradlew.bat :DistortedUniverseImmortal:clean :DistortedUniverseImmortal:build
 ```
 
+## GitHub Prerelease
+
+Run **Actions -> Prerelease Plugins -> Run workflow** to build both plugins and publish them as a GitHub prerelease for Minecraft/Paper `1.21.11`.
+
+Default prerelease tag:
+
+```text
+v0.9.0
+```
+
 The built jars will be under:
 
 ```text
