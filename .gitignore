@@ -3,6 +3,7 @@
 
 /server/
 /run/
+/release-assets/
 /.idea/
 *.iml
 
