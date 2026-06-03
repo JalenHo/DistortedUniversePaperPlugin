@@ -32,7 +32,7 @@ Run **Actions -> Prerelease Plugins -> Run workflow** to build both plugins and 
 Default prerelease tag:
 
 ```text
-v0.9.0
+v0.9.1
 ```
 
 The built jars will be under:

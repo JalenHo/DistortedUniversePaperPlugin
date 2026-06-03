@@ -16,7 +16,7 @@ public final class DistortedUniverseImmortalPlugin extends JavaPlugin {
         playerStore.load();
 
         getServer().getPluginManager().registerEvents(
-            new ImmortalDamageListener(settingsService, playerStore),
+            new ImmortalDamageListener(this, settingsService, playerStore),
             this
         );
 

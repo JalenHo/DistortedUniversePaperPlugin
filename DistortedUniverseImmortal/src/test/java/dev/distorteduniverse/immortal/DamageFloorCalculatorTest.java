@@ -22,6 +22,20 @@ class DamageFloorCalculatorTest {
     }
 
     @Test
+    void scalesRawDamageWhenFinalDamageIsReducedByModifiers() {
+        double adjusted = DamageFloorCalculator.adjustedRawDamage(3.0D, 10.0D, 5.0D, 1.0D);
+
+        assertEquals(4.0D, adjusted);
+    }
+
+    @Test
+    void scalesRawDamageWhenFinalDamageIsAmplifiedByModifiers() {
+        double adjusted = DamageFloorCalculator.adjustedRawDamage(5.0D, 2.0D, 6.0D, 1.0D);
+
+        assertEquals(4.0D / 3.0D, adjusted, 0.000001D);
+    }
+
+    @Test
     void preventsDamageAtOrBelowHealthFloor() {
         double adjusted = DamageFloorCalculator.adjustedRawDamage(1.0D, 2.0D, 2.0D, 1.0D);
 
@@ -29,8 +43,8 @@ class DamageFloorCalculatorTest {
     }
 
     @Test
-    void neverIncreasesRawDamage() {
-        double adjusted = DamageFloorCalculator.adjustedRawDamage(5.0D, 2.0D, 6.0D, 1.0D);
+    void neverIncreasesRawDamageWhenDamageIsAlreadySafe() {
+        double adjusted = DamageFloorCalculator.adjustedRawDamage(20.0D, 2.0D, 6.0D, 1.0D);
 
         assertEquals(2.0D, adjusted);
     }

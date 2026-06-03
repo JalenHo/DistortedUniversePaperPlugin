@@ -22,6 +22,8 @@ public final class DamageFloorCalculator {
         if (finalDamage <= allowedDamage) {
             return rawDamage;
         }
-        return Math.max(0.0D, Math.min(rawDamage, allowedDamage));
+        double finalDamageRatio = allowedDamage / finalDamage;
+        double adjustedRawDamage = rawDamage * finalDamageRatio;
+        return Math.max(0.0D, Math.min(rawDamage, adjustedRawDamage));
     }
 }
