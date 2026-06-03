@@ -1,0 +1,18 @@
+name: DistortedUniverseImmortal
+version: ${version}
+main: dev.distorteduniverse.immortal.DistortedUniverseImmortalPlugin
+api-version: '26.1.2'
+description: Per-player immortality with normal damage down to a configurable health floor.
+author: hokay
+commands:
+  duimmortal:
+    description: Manage immortal players.
+    usage: /duimmortal <help|status|set|unset|toggle|list|reload|save|get|config>
+    aliases:
+      - dui
+      - immortal
+    permission: distorteduniverse.immortal.admin
+permissions:
+  distorteduniverse.immortal.admin:
+    description: Allows changing immortal players and plugin settings in game.
+    default: op

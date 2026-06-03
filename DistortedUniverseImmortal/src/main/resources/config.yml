@@ -1,0 +1,10 @@
+config-version: 1
+
+enabled: true
+
+# Minecraft health uses 2.0 points per heart. The default 1.0 leaves the player at half a heart.
+minimum-health: 1.0
+
+# When true, lethal damage can still activate a held Totem of Undying before this plugin reduces damage.
+totem-compatibility:
+  enabled: true
