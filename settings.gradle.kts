@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 rootProject.name = "DistortedUniversePaperPlugins"
 
 include("DistortedUniversePlayerEvent")
+include("DistortedUniverseImmortal")
