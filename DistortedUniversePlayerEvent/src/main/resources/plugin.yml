@@ -1,0 +1,17 @@
+name: DistortedUniversePlayerEvent
+version: ${version}
+main: dev.distorteduniverse.playerevent.DistortedUniversePlayerEventPlugin
+api-version: '26.1.2'
+description: Distance-scoped player event messages, death sounds, and death kicks.
+author: hokay
+commands:
+  duplayerevent:
+    description: Configure DistortedUniversePlayerEvent.
+    usage: /duplayerevent <status|enable|disable|get|set|reload|save|test-sound>
+    aliases:
+      - dupe
+    permission: distorteduniverse.playerevent.admin
+permissions:
+  distorteduniverse.playerevent.admin:
+    description: Allows changing all DistortedUniversePlayerEvent settings in game.
+    default: op

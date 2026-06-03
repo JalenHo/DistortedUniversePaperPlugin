@@ -1,0 +1,34 @@
+config-version: 1
+
+death-sound:
+  enabled: true
+  radius: 64.0
+  sound: "minecraft:entity.wither.death"
+  category: "PLAYERS"
+  volume: 1.0
+  pitch: 1.0
+  suppress-vanilla: true
+
+death-message:
+  enabled: true
+  radius: 64.0
+  respect-gamerule: true
+  template: "<death_message>"
+
+leave-message:
+  enabled: true
+  radius: 64.0
+  template: "<quit_message>"
+
+join-message:
+  enabled: true
+  radius: 64.0
+  template: "<join_message>"
+
+death-kick:
+  enabled: true
+  delay-ticks: 1
+  kick-message: "You died."
+  show-leave-message: false
+  leave-radius: 64.0
+  leave-template: "<yellow><player_name> left the game</yellow>"

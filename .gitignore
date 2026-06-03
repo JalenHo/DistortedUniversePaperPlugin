@@ -1,0 +1,13 @@
+**/.gradle/
+**/build/
+
+/server/
+/run/
+/.idea/
+*.iml
+
+crash-reports/
+logs/
+
+*.log
+*.tmp
