@@ -1,0 +1,22 @@
+name: DistortedUniversePlayerDisguise
+version: ${version}
+main: dev.distorteduniverse.playerdisguise.DistortedUniversePlayerDisguisePlugin
+api-version: '1.21.11'
+description: Experimental player profile disguise support using ProtocolLib.
+author: hokay
+depend:
+  - ProtocolLib
+softdepend:
+  - DistortedUniversePlayerNickname
+commands:
+  dudisguise:
+    description: Manage player disguises.
+    usage: /dudisguise <help|status|set|clear|list|reload|save|get|config|refresh|cache-refresh>
+    aliases:
+      - dudis
+    permission: distorteduniverse.playerdisguise.admin
+permissions:
+  distorteduniverse.playerdisguise.admin:
+    description: Allows changing player disguises and disguise plugin settings in game.
+    default: op
+

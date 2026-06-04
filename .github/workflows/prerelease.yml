@@ -6,11 +6,11 @@ on:
       tag_name:
         description: Git tag to create or update for the prerelease.
         required: true
-        default: v0.9.1
+        default: v0.9.2
       release_name:
         description: GitHub release title.
         required: true
-        default: DistortedUniverse Plugins v0.9.1 for 1.21.11
+        default: DistortedUniverse Plugins v0.9.2 for 1.21.11
 
 permissions:
   contents: write
@@ -41,8 +41,8 @@ jobs:
       - name: Verify 1.21.11 target
         run: |
           set -euo pipefail
-          grep -R "paper-api:${PAPER_API_VERSION}" DistortedUniversePlayerEvent/build.gradle.kts DistortedUniverseImmortal/build.gradle.kts
-          grep -R "api-version: '${MINECRAFT_VERSION}'" DistortedUniversePlayerEvent/src/main/resources/plugin.yml DistortedUniverseImmortal/src/main/resources/plugin.yml
+          grep -R "paper-api:${PAPER_API_VERSION}" DistortedUniversePlayerEvent/build.gradle.kts DistortedUniverseImmortal/build.gradle.kts DistortedUniversePlayerNickname/build.gradle.kts DistortedUniversePlayerDisguise/build.gradle.kts
+          grep -R "api-version: '${MINECRAFT_VERSION}'" DistortedUniversePlayerEvent/src/main/resources/plugin.yml DistortedUniverseImmortal/src/main/resources/plugin.yml DistortedUniversePlayerNickname/src/main/resources/plugin.yml DistortedUniversePlayerDisguise/src/main/resources/plugin.yml
 
       - name: Build plugin jars
         run: ./gradlew clean build
@@ -54,6 +54,8 @@ jobs:
           path: |
             DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar
             DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar
+            DistortedUniversePlayerNickname/build/libs/DistortedUniversePlayerNickname-*.jar
+            DistortedUniversePlayerDisguise/build/libs/DistortedUniversePlayerDisguise-*.jar
           if-no-files-found: error
 
       - name: Write release notes
@@ -64,6 +66,10 @@ jobs:
           Assets:
           - DistortedUniversePlayerEvent
           - DistortedUniverseImmortal
+          - DistortedUniversePlayerNickname
+          - DistortedUniversePlayerDisguise
+
+          DistortedUniversePlayerDisguise requires a ProtocolLib runtime jar compatible with Java 21 and Paper 1.21.11.
           EOF
 
       - name: Create or update GitHub prerelease
@@ -90,4 +96,6 @@ jobs:
           gh release upload "${TAG_NAME}" \
             DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar \
             DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar \
+            DistortedUniversePlayerNickname/build/libs/DistortedUniversePlayerNickname-*.jar \
+            DistortedUniversePlayerDisguise/build/libs/DistortedUniversePlayerDisguise-*.jar \
             --clobber

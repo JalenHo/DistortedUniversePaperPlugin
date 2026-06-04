@@ -37,6 +37,6 @@ tasks {
     }
 
     jar {
-        archiveBaseName.set("DistortedUniversePlayerEvent")
+        archiveBaseName.set("DistortedUniversePlayerNickname")
     }
 }

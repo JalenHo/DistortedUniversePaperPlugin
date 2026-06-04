@@ -1,0 +1,15 @@
+config-version: 1
+enabled: true
+
+visibility:
+  self-sees-disguise: false
+
+profile-lookup:
+  cache-days: 7
+  refresh-expired-cache: true
+
+apply:
+  chat-display-name: true
+  tab-list-name: true
+  protocol-profile: true
+

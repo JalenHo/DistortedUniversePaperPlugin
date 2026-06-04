@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+      - Dev
+      - dev
+      - 1.21.11
   pull_request:
   workflow_dispatch:
 
@@ -44,4 +47,18 @@ jobs:
         with:
           name: DistortedUniverseImmortal
           path: DistortedUniverseImmortal/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload DistortedUniversePlayerNickname jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: DistortedUniversePlayerNickname
+          path: DistortedUniversePlayerNickname/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload DistortedUniversePlayerDisguise jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: DistortedUniversePlayerDisguise
+          path: DistortedUniversePlayerDisguise/build/libs/*.jar
           if-no-files-found: error
