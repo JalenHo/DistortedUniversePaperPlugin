@@ -23,6 +23,7 @@ public final class DisguiseCommand implements TabExecutor {
         "status",
         "set",
         "clear",
+        "nick",
         "list",
         "refresh",
         "cache-refresh",
@@ -35,6 +36,7 @@ public final class DisguiseCommand implements TabExecutor {
     private final Plugin plugin;
     private final DisguiseSettingsService settingsService;
     private final DisguiseStore disguiseStore;
+    private final NicknameStore nicknameStore;
     private final ProfileLookupService profileLookupService;
     private final DisguiseDisplayService displayService;
 
@@ -42,12 +44,14 @@ public final class DisguiseCommand implements TabExecutor {
         Plugin plugin,
         DisguiseSettingsService settingsService,
         DisguiseStore disguiseStore,
+        NicknameStore nicknameStore,
         ProfileLookupService profileLookupService,
         DisguiseDisplayService displayService
     ) {
         this.plugin = plugin;
         this.settingsService = settingsService;
         this.disguiseStore = disguiseStore;
+        this.nicknameStore = nicknameStore;
         this.profileLookupService = profileLookupService;
         this.displayService = displayService;
     }
@@ -64,6 +68,7 @@ public final class DisguiseCommand implements TabExecutor {
             case "status" -> sendStatus(sender, args);
             case "set" -> setDisguise(sender, label, args);
             case "clear" -> clearDisguise(sender, label, args);
+            case "nick" -> setNickname(sender, label, args);
             case "list" -> listDisguises(sender);
             case "refresh" -> {
                 displayService.refreshAll();
@@ -73,13 +78,15 @@ public final class DisguiseCommand implements TabExecutor {
             case "reload" -> {
                 settingsService.reload();
                 disguiseStore.load();
+                nicknameStore.load();
                 displayService.refreshAll();
-                sender.sendMessage(PREFIX + "Reloaded config.yml and data.yml.");
+                sender.sendMessage(PREFIX + "Reloaded config.yml, data.yml, and nicknames.yml.");
             }
             case "save" -> {
                 settingsService.save();
                 disguiseStore.save();
-                sender.sendMessage(PREFIX + "Saved config.yml and data.yml.");
+                nicknameStore.save();
+                sender.sendMessage(PREFIX + "Saved config.yml, data.yml, and nicknames.yml.");
             }
             case "get" -> getSetting(sender, label, args);
             case "config" -> setSetting(sender, label, args);
@@ -95,7 +102,7 @@ public final class DisguiseCommand implements TabExecutor {
         }
 
         String subcommand = args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && List.of("set", "clear", "status").contains(subcommand)) {
+        if (args.length == 2 && List.of("set", "clear", "nick", "status").contains(subcommand)) {
             return matching(playerNames(), args[1]);
         }
         if (args.length == 2 && (subcommand.equals("get") || subcommand.equals("config"))) {
@@ -111,6 +118,7 @@ public final class DisguiseCommand implements TabExecutor {
         sender.sendMessage(PREFIX + "/" + label + " status [player]");
         sender.sendMessage(PREFIX + "/" + label + " set <player> <minecraft-username>");
         sender.sendMessage(PREFIX + "/" + label + " clear <player>");
+        sender.sendMessage(PREFIX + "/" + label + " nick <player> <nickname>  (omit nickname to clear)");
         sender.sendMessage(PREFIX + "/" + label + " list");
         sender.sendMessage(PREFIX + "/" + label + " refresh");
         sender.sendMessage(PREFIX + "/" + label + " cache-refresh <minecraft-username>");
@@ -130,7 +138,8 @@ public final class DisguiseCommand implements TabExecutor {
             String status = disguiseStore.entry(target.playerId())
                 .map(entry -> entry.profileName() + " (" + entry.sourceId() + ")")
                 .orElse("none");
-            sender.sendMessage(PREFIX + target.name() + " disguise: " + status);
+            String nick = nicknameStore.nickname(target.playerId()).orElse("none");
+            sender.sendMessage(PREFIX + target.name() + " disguise: " + status + ", nickname: " + nick);
             return;
         }
 
@@ -139,7 +148,8 @@ public final class DisguiseCommand implements TabExecutor {
             + ", self-sees-disguise=" + settings.visibility().selfSeesDisguise()
             + ", protocol-profile=" + settings.apply().protocolProfile()
             + ", cache-days=" + settings.profileLookup().cacheDays());
-        sender.sendMessage(PREFIX + "disguised players: " + disguiseStore.size());
+        sender.sendMessage(PREFIX + "disguised players: " + disguiseStore.size()
+            + ", nicknamed players: " + nicknameStore.size());
     }
 
     private void setDisguise(CommandSender sender, String label, String[] args) {
@@ -236,22 +246,73 @@ public final class DisguiseCommand implements TabExecutor {
         disguiseStore.save();
         Player onlinePlayer = Bukkit.getPlayer(target.playerId());
         if (onlinePlayer != null) {
-            displayService.clear(onlinePlayer);
+            // Re-apply rather than reset, so any standalone nickname stays in effect.
+            displayService.apply(onlinePlayer);
         }
         sender.sendMessage(PREFIX + target.name() + (changed ? " disguise cleared." : " had no disguise."));
+    }
+
+    private void setNickname(CommandSender sender, String label, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(PREFIX + "Usage: /" + label + " nick <player> <nickname>  (omit nickname to clear)");
+            return;
+        }
+
+        TargetPlayer target = resolveTarget(args[1]);
+        if (target == null) {
+            sender.sendMessage(PREFIX + "Player must be online or known to this server: " + args[1]);
+            return;
+        }
+
+        Player onlinePlayer = Bukkit.getPlayer(target.playerId());
+
+        if (args.length == 2) {
+            boolean changed = nicknameStore.clear(target.playerId());
+            nicknameStore.save();
+            if (onlinePlayer != null) {
+                displayService.apply(onlinePlayer);
+            }
+            sender.sendMessage(PREFIX + target.name() + (changed ? " nickname cleared." : " had no nickname."));
+            return;
+        }
+
+        String nickname;
+        try {
+            nickname = DisguiseSettingParser.validateNickname(args[2]);
+        } catch (IllegalArgumentException exception) {
+            sender.sendMessage(PREFIX + "Error: " + exception.getMessage());
+            return;
+        }
+
+        boolean changed = nicknameStore.set(target.playerId(), target.name(), nickname);
+        nicknameStore.save();
+        if (onlinePlayer != null) {
+            displayService.apply(onlinePlayer);
+        }
+        sender.sendMessage(PREFIX + target.name()
+            + (changed ? " nickname set to " : " already had nickname ") + nickname + ".");
     }
 
     private void listDisguises(CommandSender sender) {
         List<DisguiseStore.DisguiseEntry> entries = disguiseStore.entries();
         if (entries.isEmpty()) {
             sender.sendMessage(PREFIX + "No disguises are set.");
-            return;
+        } else {
+            String summary = String.join(", ", entries.stream()
+                .map(entry -> entry.name() + "->" + entry.profileName())
+                .toList());
+            sender.sendMessage(PREFIX + "Disguises: " + summary);
         }
 
-        String summary = String.join(", ", entries.stream()
-            .map(entry -> entry.name() + "->" + entry.profileName())
-            .toList());
-        sender.sendMessage(PREFIX + "Disguises: " + summary);
+        List<NicknameStore.NicknameEntry> nicknameEntries = nicknameStore.entries();
+        if (nicknameEntries.isEmpty()) {
+            sender.sendMessage(PREFIX + "No nicknames are set.");
+        } else {
+            String summary = String.join(", ", nicknameEntries.stream()
+                .map(entry -> entry.name() + "->" + entry.nickname())
+                .toList());
+            sender.sendMessage(PREFIX + "Nicknames: " + summary);
+        }
     }
 
     private void refreshCache(CommandSender sender, String label, String[] args) {
@@ -321,6 +382,8 @@ public final class DisguiseCommand implements TabExecutor {
 
         return disguiseStore.findByName(rawName)
             .map(entry -> new TargetPlayer(entry.playerId(), entry.name()))
+            .or(() -> nicknameStore.findByName(rawName)
+                .map(entry -> new TargetPlayer(entry.playerId(), entry.name())))
             .orElseGet(() -> resolveCachedOfflinePlayer(rawName));
     }
 
@@ -339,6 +402,7 @@ public final class DisguiseCommand implements TabExecutor {
         Set<String> names = new LinkedHashSet<>();
         names.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         names.addAll(disguiseStore.knownNames());
+        names.addAll(nicknameStore.entries().stream().map(NicknameStore.NicknameEntry::name).toList());
         return new ArrayList<>(names);
     }
 

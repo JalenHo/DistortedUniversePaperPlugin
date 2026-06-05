@@ -79,6 +79,8 @@ public final class PlayerEventListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
+        pendingDeathKicks.remove(event.getPlayer().getUniqueId());
+
         PluginSettings settings = settingsService.settings();
         if (!settings.joinMessage().enabled()) {
             return;
@@ -101,11 +103,12 @@ public final class PlayerEventListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         PluginSettings settings = settingsService.settings();
         Player player = event.getPlayer();
-        DeathKickContext deathKickContext = pendingDeathKicks.remove(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        DeathKickContext deathKickContext = pendingDeathKicks.get(playerId);
 
         if (deathKickContext != null) {
             event.quitMessage(null);
-            if (settings.deathKick().showLeaveMessage()) {
+            if (settings.deathKick().showLeaveMessage() && !deathKickContext.hasSentLeaveMessage()) {
                 Component message = messageFormatter.quitMessage(
                     settings.deathKick().leaveTemplate(),
                     player,
@@ -113,7 +116,9 @@ public final class PlayerEventListener implements Listener {
                     defaultQuitMessage(player)
                 );
                 sendNearby(message, deathKickContext.location(), settings.deathKick().leaveRadius(), player, false);
+                deathKickContext.markLeaveMessageSent();
             }
+            scheduleDeathKickCleanup(playerId, deathKickContext);
             return;
         }
 
@@ -187,8 +192,24 @@ public final class PlayerEventListener implements Listener {
                 deathLocation
             );
             onlinePlayer.kick(kickMessage);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> pendingDeathKicks.remove(playerId), 200L);
+            DeathKickContext context = pendingDeathKicks.get(playerId);
+            if (context != null) {
+                scheduleDeathKickCleanup(playerId, context);
+            }
         }, deathKickSettings.delayTicks());
+    }
+
+    private void scheduleDeathKickCleanup(UUID playerId, DeathKickContext deathKickContext) {
+        if (deathKickContext.hasCleanupScheduled()) {
+            return;
+        }
+
+        deathKickContext.markCleanupScheduled();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (pendingDeathKicks.get(playerId) == deathKickContext) {
+                pendingDeathKicks.remove(playerId);
+            }
+        }, 200L);
     }
 
     private static Component defaultDeathMessage(Player player) {
@@ -203,6 +224,33 @@ public final class PlayerEventListener implements Listener {
         return Component.text(player.getName() + " joined the game", NamedTextColor.YELLOW);
     }
 
-    private record DeathKickContext(Location location) {
+    private static final class DeathKickContext {
+        private final Location location;
+        private boolean leaveMessageSent;
+        private boolean cleanupScheduled;
+
+        private DeathKickContext(Location location) {
+            this.location = location;
+        }
+
+        private Location location() {
+            return location;
+        }
+
+        private boolean hasSentLeaveMessage() {
+            return leaveMessageSent;
+        }
+
+        private void markLeaveMessageSent() {
+            leaveMessageSent = true;
+        }
+
+        private boolean hasCleanupScheduled() {
+            return cleanupScheduled;
+        }
+
+        private void markCleanupScheduled() {
+            cleanupScheduled = true;
+        }
     }
 }

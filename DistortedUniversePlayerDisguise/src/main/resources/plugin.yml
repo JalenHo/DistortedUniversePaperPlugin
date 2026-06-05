@@ -11,7 +11,7 @@ softdepend:
 commands:
   dudisguise:
     description: Manage player disguises.
-    usage: /dudisguise <help|status|set|clear|list|reload|save|get|config|refresh|cache-refresh>
+    usage: /dudisguise <help|status|set|clear|nick|list|reload|save|get|config|refresh|cache-refresh>
     aliases:
       - dudis
     permission: distorteduniverse.playerdisguise.admin

@@ -15,17 +15,20 @@ public final class DisguiseDisplayService {
     private final Plugin plugin;
     private final DisguiseSettingsService settingsService;
     private final DisguiseStore disguiseStore;
+    private final NicknameStore nicknameStore;
     private final DisguiseProtocolService protocolService;
 
     public DisguiseDisplayService(
         Plugin plugin,
         DisguiseSettingsService settingsService,
         DisguiseStore disguiseStore,
+        NicknameStore nicknameStore,
         DisguiseProtocolService protocolService
     ) {
         this.plugin = plugin;
         this.settingsService = settingsService;
         this.disguiseStore = disguiseStore;
+        this.nicknameStore = nicknameStore;
         this.protocolService = protocolService;
     }
 
@@ -39,13 +42,16 @@ public final class DisguiseDisplayService {
     public void apply(Player player) {
         DisguiseSettings settings = settingsService.settings();
         DisguiseStore.DisguiseEntry entry = disguiseStore.entry(player.getUniqueId()).orElse(null);
-        if (!settings.enabled() || entry == null) {
+        String nickname = nicknameStore.nickname(player.getUniqueId()).orElse(null);
+        if (!settings.enabled() || (entry == null && nickname == null)) {
             clear(player);
             return;
         }
 
-        player.setMetadata(DISGUISE_METADATA_KEY, new FixedMetadataValue(plugin, entry.profileName()));
-        Component displayName = Component.text(entry.profileName());
+        // Nickname wins for the shown name; otherwise fall back to the disguise's profile name.
+        String shownName = nickname != null ? nickname : entry.profileName();
+        player.setMetadata(DISGUISE_METADATA_KEY, new FixedMetadataValue(plugin, shownName));
+        Component displayName = Component.text(shownName);
         if (settings.apply().chatDisplayName()) {
             player.displayName(displayName);
         }

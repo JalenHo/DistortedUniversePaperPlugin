@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class DistortedUniversePlayerDisguisePlugin extends JavaPlugin {
     private DisguiseSettingsService settingsService;
     private DisguiseStore disguiseStore;
+    private NicknameStore nicknameStore;
     private DisguiseProtocolService protocolService;
     private DisguiseDisplayService displayService;
 
@@ -17,25 +18,30 @@ public final class DistortedUniversePlayerDisguisePlugin extends JavaPlugin {
         disguiseStore = new DisguiseStore(this);
         disguiseStore.load();
 
+        nicknameStore = new NicknameStore(this);
+        nicknameStore.load();
+
         if (!getServer().getPluginManager().isPluginEnabled("ProtocolLib")) {
             getLogger().severe("ProtocolLib is required and is not enabled. Disabling plugin.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
-        protocolService = new DisguiseProtocolService(this, settingsService, disguiseStore);
+        protocolService = new DisguiseProtocolService(this, settingsService, disguiseStore, nicknameStore);
         protocolService.start();
 
         ProfileLookupService profileLookupService = new ProfileLookupService(this);
-        displayService = new DisguiseDisplayService(this, settingsService, disguiseStore, protocolService);
+        displayService = new DisguiseDisplayService(this, settingsService, disguiseStore, nicknameStore, protocolService);
         displayService.refreshAll();
 
-        getServer().getPluginManager().registerEvents(new DisguiseListener(this, disguiseStore, displayService), this);
+        getServer().getPluginManager().registerEvents(
+            new DisguiseListener(this, disguiseStore, nicknameStore, displayService), this);
 
         DisguiseCommand commandHandler = new DisguiseCommand(
             this,
             settingsService,
             disguiseStore,
+            nicknameStore,
             profileLookupService,
             displayService
         );
@@ -64,6 +70,9 @@ public final class DistortedUniversePlayerDisguisePlugin extends JavaPlugin {
         }
         if (disguiseStore != null) {
             disguiseStore.save();
+        }
+        if (nicknameStore != null) {
+            nicknameStore.save();
         }
         getLogger().info("DistortedUniversePlayerDisguise disabled.");
     }

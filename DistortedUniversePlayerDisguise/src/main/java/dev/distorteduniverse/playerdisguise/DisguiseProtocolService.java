@@ -22,12 +22,14 @@ public final class DisguiseProtocolService {
     private final Plugin plugin;
     private final DisguiseSettingsService settingsService;
     private final DisguiseStore disguiseStore;
+    private final NicknameStore nicknameStore;
     private ProtocolManager protocolManager;
 
-    public DisguiseProtocolService(Plugin plugin, DisguiseSettingsService settingsService, DisguiseStore disguiseStore) {
+    public DisguiseProtocolService(Plugin plugin, DisguiseSettingsService settingsService, DisguiseStore disguiseStore, NicknameStore nicknameStore) {
         this.plugin = plugin;
         this.settingsService = settingsService;
         this.disguiseStore = disguiseStore;
+        this.nicknameStore = nicknameStore;
     }
 
     public void start() {
@@ -56,6 +58,66 @@ public final class DisguiseProtocolService {
             return;
         }
 
+        List<Player> viewers = trackedViewers(subject);
+        if (viewers.isEmpty()) {
+            return;
+        }
+
+        try {
+            protocolManager.updateEntity(subject, viewers);
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.WARNING, "Could not refresh disguised player entity.", exception);
+        }
+
+        List<Player> entityReloadViewers = viewers.stream()
+            .filter(viewer -> !viewer.getUniqueId().equals(subject.getUniqueId()))
+            .toList();
+        if (entityReloadViewers.isEmpty()) {
+            return;
+        }
+
+        // updateEntity above only resends entity metadata; the client keeps the game profile
+        // (skin + name above head) it cached when the player entity first spawned. To actually
+        // change the rendered skin and overhead name we must respawn the entity for each viewer:
+        // hidePlayer drops the player-info entry and despawns the entity, then showPlayer re-sends
+        // the ADD_PLAYER packet (which our PLAYER_INFO listener rewrites with the disguise profile)
+        // and respawns the entity so it re-reads the disguised skin/name. Without this, only the
+        // tab list and chat (Bukkit display-name overrides) change.
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!subject.isOnline()) {
+                return;
+            }
+
+            for (Player viewer : entityReloadViewers) {
+                if (viewer.isOnline() && viewer.canSee(subject)) {
+                    viewer.hidePlayer(plugin, subject);
+                }
+            }
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!subject.isOnline()) {
+                    return;
+                }
+
+                List<Player> stillOnlineViewers = new ArrayList<>();
+                for (Player viewer : entityReloadViewers) {
+                    if (viewer.isOnline()) {
+                        viewer.showPlayer(plugin, subject);
+                        stillOnlineViewers.add(viewer);
+                    }
+                }
+                if (!stillOnlineViewers.isEmpty()) {
+                    try {
+                        protocolManager.updateEntity(subject, stillOnlineViewers);
+                    } catch (RuntimeException exception) {
+                        plugin.getLogger().log(Level.WARNING, "Could not refresh disguised player entity after reload.", exception);
+                    }
+                }
+            }, 2L);
+        });
+    }
+
+    private List<Player> trackedViewers(Player subject) {
         List<Player> viewers = new ArrayList<>();
         boolean selfSeesDisguise = settingsService.settings().visibility().selfSeesDisguise();
         for (Player viewer : Bukkit.getOnlinePlayers()) {
@@ -66,9 +128,7 @@ public final class DisguiseProtocolService {
                 viewers.add(viewer);
             }
         }
-        if (!viewers.isEmpty()) {
-            protocolManager.updateEntity(subject, viewers);
-        }
+        return viewers;
     }
 
     public void refreshAllTracked() {
@@ -93,25 +153,31 @@ public final class DisguiseProtocolService {
     }
 
     private void rewritePlayerInfoDataList(Player viewer, PacketContainer packet) {
-        if (packet.getPlayerInfoDataLists().size() == 0) {
-            return;
-        }
+        // ProtocolLib exposes more than one List<PlayerInfoData> field for the 1.21.x player-info
+        // update packet, and only one of them holds the real entries; the others read back as a
+        // list of nulls. Process every field and rewrite whichever one actually carries entries.
+        int listFields = packet.getPlayerInfoDataLists().size();
+        for (int field = 0; field < listFields; field++) {
+            List<PlayerInfoData> originalList = packet.getPlayerInfoDataLists().readSafely(field);
+            if (originalList == null || originalList.isEmpty()) {
+                continue;
+            }
 
-        List<PlayerInfoData> originalList = packet.getPlayerInfoDataLists().readSafely(0);
-        if (originalList == null || originalList.isEmpty()) {
-            return;
-        }
+            List<PlayerInfoData> rewrittenList = new ArrayList<>(originalList.size());
+            boolean changed = false;
+            for (PlayerInfoData original : originalList) {
+                if (original == null) {
+                    rewrittenList.add(null);
+                    continue;
+                }
+                PlayerInfoData rewritten = rewriteData(viewer, original);
+                rewrittenList.add(rewritten);
+                changed = changed || rewritten != original;
+            }
 
-        List<PlayerInfoData> rewrittenList = new ArrayList<>(originalList.size());
-        boolean changed = false;
-        for (PlayerInfoData original : originalList) {
-            PlayerInfoData rewritten = rewriteData(viewer, original);
-            rewrittenList.add(rewritten);
-            changed = changed || rewritten != original;
-        }
-
-        if (changed) {
-            packet.getPlayerInfoDataLists().write(0, rewrittenList);
+            if (changed) {
+                packet.getPlayerInfoDataLists().write(field, rewrittenList);
+            }
         }
     }
 
@@ -129,16 +195,26 @@ public final class DisguiseProtocolService {
         }
 
         DisguiseStore.DisguiseEntry entry = disguiseStore.entry(subjectId).orElse(null);
-        if (entry == null) {
+        String nickname = nicknameStore.nickname(subjectId).orElse(null);
+        if (entry == null && nickname == null) {
             return original;
         }
 
-        WrappedGameProfile profile = new WrappedGameProfile(subjectId, entry.profileName());
-        String signature = entry.textureSignature().isBlank() ? null : entry.textureSignature();
-        profile.getProperties().put(
-            "textures",
-            WrappedSignedProperty.fromValues("textures", entry.textureValue(), signature)
-        );
+        // Precedence: a nickname overrides the shown name; the disguise supplies the skin
+        // (and the name only when there is no nickname).
+        String shownName = nickname != null ? nickname : entry.profileName();
+        WrappedGameProfile profile = new WrappedGameProfile(subjectId, shownName);
+        if (entry != null && !entry.textureValue().isBlank()) {
+            String signature = entry.textureSignature().isBlank() ? null : entry.textureSignature();
+            profile.getProperties().put(
+                "textures",
+                WrappedSignedProperty.fromValues("textures", entry.textureValue(), signature)
+            );
+        } else if (original.getProfile() != null) {
+            // Nickname-only (no skin disguise): keep the player's real skin by carrying the
+            // original profile's properties onto the renamed profile.
+            profile.getProperties().putAll(original.getProfile().getProperties());
+        }
 
         return new PlayerInfoData(
             subjectId,
@@ -161,4 +237,3 @@ public final class DisguiseProtocolService {
         return subject == null || viewer.canSee(subject);
     }
 }
-

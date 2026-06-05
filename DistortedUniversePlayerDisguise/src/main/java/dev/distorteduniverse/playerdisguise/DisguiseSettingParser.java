@@ -60,6 +60,14 @@ public final class DisguiseSettingParser {
         return username;
     }
 
+    public static String validateNickname(String rawNickname) {
+        String nickname = rawNickname.trim();
+        if (!nickname.matches("[A-Za-z0-9_]{1,16}")) {
+            throw new IllegalArgumentException("Nickname must be 1-16 letters, numbers, or underscores.");
+        }
+        return nickname;
+    }
+
     private static int parseInt(String value, int min, int max, String label) {
         try {
             int parsed = Integer.parseInt(value);
