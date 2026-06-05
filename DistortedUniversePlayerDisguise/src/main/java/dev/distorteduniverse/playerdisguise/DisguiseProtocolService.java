@@ -54,7 +54,9 @@ public final class DisguiseProtocolService {
     }
 
     public void refreshTracked(Player subject) {
-        if (protocolManager == null || !subject.isOnline()) {
+        // Bukkit flips the plugin to disabled before onDisable() runs, so the shutdown-time
+        // clearAll() must not schedule the hide/show respawn task (the scheduler rejects it).
+        if (protocolManager == null || !plugin.isEnabled() || !subject.isOnline()) {
             return;
         }
 
