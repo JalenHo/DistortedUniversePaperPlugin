@@ -105,5 +105,4 @@ plugins/DistortedUniversePlayerDisguise/nicknames.yml
 - By default, the disguised player does not see their own disguise.
 - Custom nicknames take precedence over a disguise's profile name. The disguise still supplies the skin.
 - Death messages are rewritten so the kill feed shows the disguised or nicknamed name for victims and killers.
-- `DistortedUniversePlayerNickname` is optional. If installed, this plugin refreshes it after disguise changes. While a disguise or built-in nickname is active, the standalone nickname plugin skips that player.
 - Other chat, tab, scoreboard, nickname, or disguise plugins may override this plugin's output.

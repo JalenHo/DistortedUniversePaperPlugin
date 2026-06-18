@@ -49,13 +49,6 @@ jobs:
           path: DistortedUniverseImmortal/build/libs/*.jar
           if-no-files-found: error
 
-      - name: Upload DistortedUniversePlayerNickname jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: DistortedUniversePlayerNickname
-          path: DistortedUniversePlayerNickname/build/libs/*.jar
-          if-no-files-found: error
-
       - name: Upload DistortedUniversePlayerDisguise jar
         uses: actions/upload-artifact@v4
         with:

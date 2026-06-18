@@ -66,7 +66,6 @@ public final class DisguiseDisplayService {
         player.displayName(Component.text(player.getName()));
         player.playerListName(Component.text(player.getName()));
         protocolService.refreshTracked(player);
-        refreshNicknamePlugin();
     }
 
     public void clearAll() {
@@ -76,7 +75,6 @@ public final class DisguiseDisplayService {
             player.playerListName(Component.text(player.getName()));
         }
         protocolService.refreshAllTracked();
-        refreshNicknamePlugin();
     }
 
     public List<Player> viewersFor(Player subject) {
@@ -99,13 +97,5 @@ public final class DisguiseDisplayService {
         }
         Player subject = Bukkit.getPlayer(subjectId);
         return subject == null || viewer.canSee(subject);
-    }
-
-    private void refreshNicknamePlugin() {
-        if (plugin.isEnabled() && Bukkit.getPluginManager().isPluginEnabled("DistortedUniversePlayerNickname")) {
-            Bukkit.getScheduler().runTask(plugin, () ->
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "dunickname refresh")
-            );
-        }
     }
 }

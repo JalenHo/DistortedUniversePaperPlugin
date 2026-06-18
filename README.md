@@ -10,10 +10,6 @@ Released plugins for Minecraft/Paper `1.21.11` (`v0.9.2`):
 - [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor.
 - [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises. Includes `/dudisguise nick` for tab, chat, nametag, and kill-feed names.
 
-Optional source module (not included in GitHub prerelease assets):
-
-- [DistortedUniversePlayerNickname](DistortedUniversePlayerNickname/) - standalone nickname plugin with above-head display modes. Use this only if you need features beyond `/dudisguise nick`.
-
 ## Branches
 
 - `Dev` is the active development branch.
@@ -34,18 +30,12 @@ At the current `v0.9.2` prerelease line, `Dev` and `1.21.11` point to the same c
 .\gradlew.bat clean build
 ```
 
-Build one released plugin:
+Build one plugin:
 
 ```powershell
 .\gradlew.bat :DistortedUniversePlayerEvent:clean :DistortedUniversePlayerEvent:build
 .\gradlew.bat :DistortedUniverseImmortal:clean :DistortedUniverseImmortal:build
 .\gradlew.bat :DistortedUniversePlayerDisguise:clean :DistortedUniversePlayerDisguise:build
-```
-
-Build the optional nickname module:
-
-```powershell
-.\gradlew.bat :DistortedUniversePlayerNickname:clean :DistortedUniversePlayerNickname:build
 ```
 
 ## GitHub Prerelease
@@ -66,9 +56,7 @@ DistortedUniverseImmortal
 DistortedUniversePlayerDisguise
 ```
 
-`DistortedUniversePlayerDisguise` includes a built-in nickname command (`/dudisguise nick`), so the standalone `DistortedUniversePlayerNickname` jar is not uploaded to the prerelease.
-
-Released jar output paths:
+The built jars will be under:
 
 ```text
 DistortedUniversePlayerEvent/build/libs/
@@ -76,20 +64,22 @@ DistortedUniverseImmortal/build/libs/
 DistortedUniversePlayerDisguise/build/libs/
 ```
 
-Optional module output:
-
-```text
-DistortedUniversePlayerNickname/build/libs/
-```
-
 ## Repository Layout
 
 ```text
 .
-|-- DistortedUniversePlayerEvent/      # released
-|-- DistortedUniverseImmortal/         # released
-|-- DistortedUniversePlayerDisguise/   # released
-|-- DistortedUniversePlayerNickname/   # optional source module
+|-- DistortedUniversePlayerEvent/
+|   |-- src/
+|   |-- build.gradle.kts
+|   `-- README.md
+|-- DistortedUniverseImmortal/
+|   |-- src/
+|   |-- build.gradle.kts
+|   `-- README.md
+|-- DistortedUniversePlayerDisguise/
+|   |-- src/
+|   |-- build.gradle.kts
+|   `-- README.md
 |-- gradle/
 |-- gradlew
 |-- gradlew.bat
