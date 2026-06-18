@@ -4,10 +4,19 @@ Monorepo for DistortedUniverse PaperMC plugins.
 
 ## Plugins
 
-- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks for Minecraft/Paper `1.21.11`.
-- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor for Minecraft/Paper `1.21.11`.
-- [DistortedUniversePlayerNickname](DistortedUniversePlayerNickname/) - persistent player nicknames for chat, tab list, and visual above-head labels for Minecraft/Paper `1.21.11`.
-- [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises for Minecraft/Paper `1.21.11`.
+Released plugins for Minecraft/Paper `1.21.11` (`v0.9.2`):
+
+- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks. See its README for full command, module, and setting reference.
+- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor. See its README for full command and setting reference.
+- [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises. Includes `/dudisguise nick` for tab, chat, nametag, and kill-feed names. See its README for full command and setting reference.
+
+## Branches
+
+- `Dev` is the active development branch.
+- `1.21.11` tracks the same code as `Dev` for Minecraft/Paper `1.21.11` releases.
+- `main` should be kept in sync with `Dev` for CI and default checkouts.
+
+At the current `v0.9.2` prerelease line, `Dev` and `1.21.11` point to the same commit.
 
 ## Requirements
 
@@ -26,13 +35,12 @@ Build one plugin:
 ```powershell
 .\gradlew.bat :DistortedUniversePlayerEvent:clean :DistortedUniversePlayerEvent:build
 .\gradlew.bat :DistortedUniverseImmortal:clean :DistortedUniverseImmortal:build
-.\gradlew.bat :DistortedUniversePlayerNickname:clean :DistortedUniversePlayerNickname:build
 .\gradlew.bat :DistortedUniversePlayerDisguise:clean :DistortedUniversePlayerDisguise:build
 ```
 
 ## GitHub Prerelease
 
-Run **Actions -> Prerelease Plugins -> Run workflow** to build all plugins and publish them as a GitHub prerelease for Minecraft/Paper `1.21.11`.
+Run **Actions -> Prerelease Plugins -> Run workflow** to build and publish a GitHub prerelease for Minecraft/Paper `1.21.11`.
 
 Default prerelease tag:
 
@@ -40,12 +48,19 @@ Default prerelease tag:
 v0.9.2
 ```
 
+Prerelease assets:
+
+```text
+DistortedUniversePlayerEvent
+DistortedUniverseImmortal
+DistortedUniversePlayerDisguise
+```
+
 The built jars will be under:
 
 ```text
 DistortedUniversePlayerEvent/build/libs/
 DistortedUniverseImmortal/build/libs/
-DistortedUniversePlayerNickname/build/libs/
 DistortedUniversePlayerDisguise/build/libs/
 ```
 
@@ -58,10 +73,6 @@ DistortedUniversePlayerDisguise/build/libs/
 |   |-- build.gradle.kts
 |   `-- README.md
 |-- DistortedUniverseImmortal/
-|   |-- src/
-|   |-- build.gradle.kts
-|   `-- README.md
-|-- DistortedUniversePlayerNickname/
 |   |-- src/
 |   |-- build.gradle.kts
 |   `-- README.md
