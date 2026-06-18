@@ -39,22 +39,11 @@ distorteduniverse.playerdisguise.admin
 
 ## Commands
 
-```text
-/dudisguise status [player]
-/dudisguise set <player> <minecraft-username>
-/dudisguise clear <player>
-/dudisguise nick <player> <nickname>
-/dudisguise nick <player>
-/dudisguise list
-/dudisguise refresh
-/dudisguise cache-refresh <minecraft-username>
-/dudisguise get <path>
-/dudisguise config <path> <value...>
-/dudisguise reload
-/dudisguise save
-```
+Main command:
 
-`/dudisguise nick` stores a plain-text nickname in `nicknames.yml`. Omit the nickname argument to clear it. A nickname can be used with or without a skin disguise.
+```text
+/dudisguise
+```
 
 Alias:
 
@@ -62,17 +51,57 @@ Alias:
 /dudis
 ```
 
-## Settings
+## Commands Reference
 
-```text
-enabled
-visibility.self-sees-disguise
-profile-lookup.cache-days
-profile-lookup.refresh-expired-cache
-apply.chat-display-name
-apply.tab-list-name
-apply.protocol-profile
-```
+| Command | Description |
+| --- | --- |
+| `/dudisguise help` | Show command usage. Same as running `/dudisguise` with no arguments. |
+| `/dudisguise status` | Show plugin settings plus counts of disguised and nicknamed players. |
+| `/dudisguise status <player>` | Show one player's active disguise profile and custom nickname, if any. |
+| `/dudisguise set <player> <minecraft-username>` | Look up a Mojang profile and disguise the player as that username and skin. Reuses cached profile data when available. |
+| `/dudisguise clear <player>` | Remove a player's skin disguise. Any custom nickname remains active. |
+| `/dudisguise nick <player> <nickname>` | Set a plain-text custom nickname for tab, chat, nametag, and kill-feed display. |
+| `/dudisguise nick <player>` | Clear a player's custom nickname. |
+| `/dudisguise list` | List all stored disguises and all stored custom nicknames. |
+| `/dudisguise refresh` | Re-apply disguises and nicknames for all online players and refresh tracked ProtocolLib entities. |
+| `/dudisguise cache-refresh <minecraft-username>` | Force a fresh Mojang profile lookup and update every disguise that uses that username. |
+| `/dudisguise get <path>` | Read one setting path from the live in-memory config. |
+| `/dudisguise config <path> <value...>` | Change one setting path live, validate it, save to `config.yml`, and refresh all online disguises. |
+| `/dudisguise reload` | Reload `config.yml`, `data.yml`, and `nicknames.yml`, then refresh all online disguises. |
+| `/dudisguise save` | Write the current live config, disguise data, and nickname data back to disk. |
+
+Player targeting accepts:
+
+- an online player name
+- a name already stored in `data.yml` or `nicknames.yml`
+- a name found in the server's offline-player cache
+
+Minecraft usernames and nicknames must be `1` to `16` characters and contain only letters, numbers, or underscores. Disguise usernames must be at least `3` characters.
+
+## Settings Reference
+
+Boolean settings accept `true` / `false`, `on` / `off`, `yes` / `no`, `enable` / `disable`, and `1` / `0`.
+
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Master switch for disguise and nickname application. When `false`, stored data remains on disk but nothing is applied. |
+| `visibility.self-sees-disguise` | boolean | `false` | When `true`, the disguised player also sees their own disguise. When `false`, only other players see it. |
+| `profile-lookup.cache-days` | integer | `7` | How long cached Mojang profile data is considered fresh. `0` disables expiry. Range: `0` to `365`. |
+| `profile-lookup.refresh-expired-cache` | boolean | `true` | When `true`, expired cache entries trigger a new Mojang lookup on disguise set. When `false`, expired cache may still be reused. |
+| `apply.chat-display-name` | boolean | `true` | Update Paper chat/display name APIs for disguised or nicknamed players. |
+| `apply.tab-list-name` | boolean | `true` | Update the tab-list name for disguised or nicknamed players. |
+| `apply.protocol-profile` | boolean | `true` | Rewrite ProtocolLib player-info packets so clients see the disguised skin and nametag profile. |
+
+## Feature Reference
+
+| Feature | Description |
+| --- | --- |
+| Skin disguise | Makes a player appear as another Minecraft account's username and skin to other clients. |
+| Built-in nickname | Changes only the shown name while keeping the player's real skin. Stored separately from disguises. |
+| Nickname precedence | If both a disguise and a custom nickname are set, the nickname is shown as the name and the disguise still supplies the skin. |
+| Kill-feed rewrite | Death messages are rewritten so victims and killers show their disguised or nicknamed name in the kill feed. |
+| Profile cache | Mojang profile lookups are cached in `data.yml` to reduce repeated API calls. |
+| Entity refresh | Disguise changes trigger a tracked entity refresh so clients re-read the rewritten profile. |
 
 ## Examples
 
@@ -83,18 +112,25 @@ apply.protocol-profile
 /dudisguise nick Steve
 /dudisguise cache-refresh Notch
 /dudisguise config visibility.self-sees-disguise true
+/dudisguise status Steve
+/dudisguise list
 ```
 
 ## Data Files
 
 ```text
+plugins/DistortedUniversePlayerDisguise/config.yml
 plugins/DistortedUniversePlayerDisguise/data.yml
 plugins/DistortedUniversePlayerDisguise/nicknames.yml
 ```
 
-- `data.yml` stores skin disguises and cached Mojang profile data.
-- `nicknames.yml` stores custom nicknames from `/dudisguise nick`.
-- `/dudisguise reload` and `/dudisguise save` touch `config.yml`, `data.yml`, and `nicknames.yml`.
+| File | Description |
+| --- | --- |
+| `config.yml` | Plugin settings. |
+| `data.yml` | Skin disguises and cached Mojang profile data. |
+| `nicknames.yml` | Custom nicknames from `/dudisguise nick`. |
+
+`/dudisguise reload` and `/dudisguise save` touch all three files.
 
 ## Notes
 
@@ -103,6 +139,4 @@ plugins/DistortedUniversePlayerDisguise/nicknames.yml
 - Headless server smoke tests can verify plugin load, commands, persistence, and Mojang profile lookup, but final skin and nametag appearance should be checked with real Minecraft clients.
 - The current ProtocolLib dev-build jar may require a newer Java runtime than Java `21`; use a runtime-compatible ProtocolLib jar.
 - By default, the disguised player does not see their own disguise.
-- Custom nicknames take precedence over a disguise's profile name. The disguise still supplies the skin.
-- Death messages are rewritten so the kill feed shows the disguised or nicknamed name for victims and killers.
 - Other chat, tab, scoreboard, nickname, or disguise plugins may override this plugin's output.
