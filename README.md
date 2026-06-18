@@ -9,6 +9,14 @@ Monorepo for DistortedUniverse PaperMC plugins.
 - [DistortedUniversePlayerNickname](DistortedUniversePlayerNickname/) - persistent player nicknames for chat, tab list, and visual above-head labels for Minecraft/Paper `1.21.11`.
 - [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises for Minecraft/Paper `1.21.11`.
 
+## Branches
+
+- `Dev` is the active development branch.
+- `1.21.11` tracks the same code as `Dev` for Minecraft/Paper `1.21.11` releases.
+- `main` should be kept in sync with `Dev` for CI and default checkouts.
+
+At the current `v0.9.2` prerelease line, `Dev` and `1.21.11` point to the same commit.
+
 ## Requirements
 
 - Java `21`
@@ -32,13 +40,23 @@ Build one plugin:
 
 ## GitHub Prerelease
 
-Run **Actions -> Prerelease Plugins -> Run workflow** to build all plugins and publish them as a GitHub prerelease for Minecraft/Paper `1.21.11`.
+Run **Actions -> Prerelease Plugins -> Run workflow** to build and publish a GitHub prerelease for Minecraft/Paper `1.21.11`.
 
 Default prerelease tag:
 
 ```text
 v0.9.2
 ```
+
+Prerelease assets:
+
+```text
+DistortedUniversePlayerEvent
+DistortedUniverseImmortal
+DistortedUniversePlayerDisguise
+```
+
+`DistortedUniversePlayerDisguise` includes a built-in nickname command (`/dudisguise nick`) for tab, chat, nametag, and kill-feed names, so the standalone `DistortedUniversePlayerNickname` jar is not uploaded to the prerelease. You can still build and install `DistortedUniversePlayerNickname` locally when you need its above-head display modes and validation settings.
 
 The built jars will be under:
 

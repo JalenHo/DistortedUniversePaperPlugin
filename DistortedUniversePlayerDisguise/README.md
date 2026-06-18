@@ -2,7 +2,7 @@
 
 An experimental PaperMC server-side plugin for Minecraft `1.21.11` using ProtocolLib.
 
-The plugin stores persistent per-player disguises by UUID and attempts to make one player appear as another Minecraft username and skin to other players.
+The plugin stores persistent per-player disguises by UUID and attempts to make one player appear as another Minecraft username and skin to other players. It also includes a built-in custom nickname (`/dudisguise nick`) that changes only the shown name while keeping the player's real skin.
 
 ## Requirements
 
@@ -43,6 +43,8 @@ distorteduniverse.playerdisguise.admin
 /dudisguise status [player]
 /dudisguise set <player> <minecraft-username>
 /dudisguise clear <player>
+/dudisguise nick <player> <nickname>
+/dudisguise nick <player>
 /dudisguise list
 /dudisguise refresh
 /dudisguise cache-refresh <minecraft-username>
@@ -51,6 +53,8 @@ distorteduniverse.playerdisguise.admin
 /dudisguise reload
 /dudisguise save
 ```
+
+`/dudisguise nick` stores a plain-text nickname in `nicknames.yml`. Omit the nickname argument to clear it. A nickname can be used with or without a skin disguise.
 
 Alias:
 
@@ -75,9 +79,22 @@ apply.protocol-profile
 ```text
 /dudisguise set Steve Notch
 /dudisguise clear Steve
+/dudisguise nick Steve Traveler
+/dudisguise nick Steve
 /dudisguise cache-refresh Notch
 /dudisguise config visibility.self-sees-disguise true
 ```
+
+## Data Files
+
+```text
+plugins/DistortedUniversePlayerDisguise/data.yml
+plugins/DistortedUniversePlayerDisguise/nicknames.yml
+```
+
+- `data.yml` stores skin disguises and cached Mojang profile data.
+- `nicknames.yml` stores custom nicknames from `/dudisguise nick`.
+- `/dudisguise reload` and `/dudisguise save` touch `config.yml`, `data.yml`, and `nicknames.yml`.
 
 ## Notes
 
@@ -86,5 +103,7 @@ apply.protocol-profile
 - Headless server smoke tests can verify plugin load, commands, persistence, and Mojang profile lookup, but final skin and nametag appearance should be checked with real Minecraft clients.
 - The current ProtocolLib dev-build jar may require a newer Java runtime than Java `21`; use a runtime-compatible ProtocolLib jar.
 - By default, the disguised player does not see their own disguise.
-- When a player has an active disguise, `DistortedUniversePlayerNickname` skips nickname display for that player.
+- Custom nicknames take precedence over a disguise's profile name. The disguise still supplies the skin.
+- Death messages are rewritten so the kill feed shows the disguised or nicknamed name for victims and killers.
+- `DistortedUniversePlayerNickname` is optional. If installed, this plugin refreshes it after disguise changes. While a disguise or built-in nickname is active, the standalone nickname plugin skips that player.
 - Other chat, tab, scoreboard, nickname, or disguise plugins may override this plugin's output.

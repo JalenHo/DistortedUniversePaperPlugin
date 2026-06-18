@@ -241,6 +241,8 @@ minecraft:entity.lightning_bolt.thunder
 
 Custom non-vanilla sound keys are supported, but clients must have a resource pack that defines the sound. A server-side plugin cannot send brand-new audio files by itself.
 
+When setting `death-sound.sound`, vanilla `minecraft:` keys are validated against the server sound registry. Unknown vanilla keys are rejected with an error message.
+
 ## Default Behavior
 
 - Death sounds are sent only to same-world players within `death-sound.radius`.
@@ -249,6 +251,8 @@ Custom non-vanilla sound keys are supported, but clients must have a resource pa
 - Leave messages are sent only to same-world players within `leave-message.radius`.
 - Players are kicked shortly after death when `death-kick.enabled` is true.
 - Death-kick leave notices are disabled by default.
+- During a death kick, the vanilla kick leave message is suppressed so only the configured death-kick leave notice can appear.
+- Death-kick state is cleaned up after quit or rejoin so a later normal quit does not reuse the death-kick leave template.
 
 ## Local Testing
 

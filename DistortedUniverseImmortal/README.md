@@ -117,4 +117,6 @@ Disable the whole plugin without removing the saved immortal list:
 
 - Immortal players are stored by UUID in `plugins/DistortedUniverseImmortal/data.yml`.
 - A player must be online or already known to the server cache to be targeted by command.
+- Player names are refreshed in `data.yml` when they join.
 - If `totem-compatibility.enabled` is true, lethal damage can still activate a held Totem of Undying.
+- When damage is fully absorbed at the health floor, the plugin preserves the normal post-hit invulnerability window so rapid hits do not stack through the floor.

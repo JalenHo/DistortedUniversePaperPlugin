@@ -4,6 +4,10 @@ A PaperMC server-side plugin for Minecraft `1.21.11`.
 
 The plugin stores persistent per-player nicknames by UUID and applies them to Paper display names, tab list names, and an optional above-head visual label.
 
+This is an optional companion plugin. `DistortedUniversePlayerDisguise` already includes a simpler built-in nickname (`/dudisguise nick`) for tab, chat, nametag, and kill-feed names. Use this plugin when you need above-head display modes, MiniMessage validation, or nickname settings independent of ProtocolLib disguises.
+
+The GitHub prerelease workflow does not upload this jar. Build it locally when needed.
+
 ## Requirements
 
 - Minecraft / Paper `1.21.11`
@@ -90,5 +94,5 @@ validation.max-plain-length
 
 - `text-display` mode uses a separate `TextDisplay` entity, so the above-head label may not be visually identical to Minecraft's native player nametag.
 - `scoreboard-affix` mode can add a prefix but cannot fully replace the real username above the head.
-- If `DistortedUniversePlayerDisguise` is active for a player, nickname display is skipped for that player until the disguise is cleared.
+- If `DistortedUniversePlayerDisguise` is active for a player (disguise or built-in `/dudisguise nick`), nickname display is skipped for that player until the disguise plugin clears that state.
 - Other chat, tab, scoreboard, nickname, or disguise plugins may override this plugin's output.
