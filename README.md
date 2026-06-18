@@ -4,10 +4,15 @@ Monorepo for DistortedUniverse PaperMC plugins.
 
 ## Plugins
 
-- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks for Minecraft/Paper `1.21.11`.
-- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor for Minecraft/Paper `1.21.11`.
-- [DistortedUniversePlayerNickname](DistortedUniversePlayerNickname/) - persistent player nicknames for chat, tab list, and visual above-head labels for Minecraft/Paper `1.21.11`.
-- [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises for Minecraft/Paper `1.21.11`.
+Released plugins for Minecraft/Paper `1.21.11` (`v0.9.2`):
+
+- [DistortedUniversePlayerEvent](DistortedUniversePlayerEvent/) - distance-scoped player event messages, death sounds, and death kicks.
+- [DistortedUniverseImmortal](DistortedUniverseImmortal/) - per-player immortality with normal damage down to a configurable health floor.
+- [DistortedUniversePlayerDisguise](DistortedUniversePlayerDisguise/) - experimental ProtocolLib-based player name and skin disguises. Includes `/dudisguise nick` for tab, chat, nametag, and kill-feed names.
+
+Optional source module (not included in GitHub prerelease assets):
+
+- [DistortedUniversePlayerNickname](DistortedUniversePlayerNickname/) - standalone nickname plugin with above-head display modes. Use this only if you need features beyond `/dudisguise nick`.
 
 ## Branches
 
@@ -29,13 +34,18 @@ At the current `v0.9.2` prerelease line, `Dev` and `1.21.11` point to the same c
 .\gradlew.bat clean build
 ```
 
-Build one plugin:
+Build one released plugin:
 
 ```powershell
 .\gradlew.bat :DistortedUniversePlayerEvent:clean :DistortedUniversePlayerEvent:build
 .\gradlew.bat :DistortedUniverseImmortal:clean :DistortedUniverseImmortal:build
-.\gradlew.bat :DistortedUniversePlayerNickname:clean :DistortedUniversePlayerNickname:build
 .\gradlew.bat :DistortedUniversePlayerDisguise:clean :DistortedUniversePlayerDisguise:build
+```
+
+Build the optional nickname module:
+
+```powershell
+.\gradlew.bat :DistortedUniversePlayerNickname:clean :DistortedUniversePlayerNickname:build
 ```
 
 ## GitHub Prerelease
@@ -56,37 +66,30 @@ DistortedUniverseImmortal
 DistortedUniversePlayerDisguise
 ```
 
-`DistortedUniversePlayerDisguise` includes a built-in nickname command (`/dudisguise nick`) for tab, chat, nametag, and kill-feed names, so the standalone `DistortedUniversePlayerNickname` jar is not uploaded to the prerelease. You can still build and install `DistortedUniversePlayerNickname` locally when you need its above-head display modes and validation settings.
+`DistortedUniversePlayerDisguise` includes a built-in nickname command (`/dudisguise nick`), so the standalone `DistortedUniversePlayerNickname` jar is not uploaded to the prerelease.
 
-The built jars will be under:
+Released jar output paths:
 
 ```text
 DistortedUniversePlayerEvent/build/libs/
 DistortedUniverseImmortal/build/libs/
-DistortedUniversePlayerNickname/build/libs/
 DistortedUniversePlayerDisguise/build/libs/
+```
+
+Optional module output:
+
+```text
+DistortedUniversePlayerNickname/build/libs/
 ```
 
 ## Repository Layout
 
 ```text
 .
-|-- DistortedUniversePlayerEvent/
-|   |-- src/
-|   |-- build.gradle.kts
-|   `-- README.md
-|-- DistortedUniverseImmortal/
-|   |-- src/
-|   |-- build.gradle.kts
-|   `-- README.md
-|-- DistortedUniversePlayerNickname/
-|   |-- src/
-|   |-- build.gradle.kts
-|   `-- README.md
-|-- DistortedUniversePlayerDisguise/
-|   |-- src/
-|   |-- build.gradle.kts
-|   `-- README.md
+|-- DistortedUniversePlayerEvent/      # released
+|-- DistortedUniverseImmortal/         # released
+|-- DistortedUniversePlayerDisguise/   # released
+|-- DistortedUniversePlayerNickname/   # optional source module
 |-- gradle/
 |-- gradlew
 |-- gradlew.bat
