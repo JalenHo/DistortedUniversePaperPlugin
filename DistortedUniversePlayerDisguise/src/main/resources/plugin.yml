@@ -6,8 +6,6 @@ description: Experimental player profile disguise support using ProtocolLib.
 author: hokay
 depend:
   - ProtocolLib
-softdepend:
-  - DistortedUniversePlayerNickname
 commands:
   dudisguise:
     description: Manage player disguises.
