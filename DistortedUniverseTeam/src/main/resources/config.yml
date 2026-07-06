@@ -1,0 +1,14 @@
+config-version: 1
+
+enabled: true
+friendly-fire: false
+
+glow:
+  enabled-by-default: true
+  default-color: white
+
+default-color: white
+default-max-size: -1
+
+autokit:
+  enabled: true

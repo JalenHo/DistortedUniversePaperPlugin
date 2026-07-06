@@ -1,0 +1,52 @@
+config-version: 1
+
+enabled: true
+
+# Preset fake player names (randomly selected on spawn-random)
+names:
+  - "Steve"
+  - "Alex"
+  - "Herobrine"
+  - "Notch"
+  - "Creeper"
+  - "Zombie"
+  - "Skeleton"
+  - "Enderman"
+
+# Wandering behavior
+wandering:
+  # Default radius in blocks
+  default-radius: 10
+  # Movement interval in server ticks (20 ticks = 1 second)
+  tick-interval: 40
+  # Use pathfinding (true) or simple teleport (false)
+  use-pathfinding: true
+
+# Admin toggles for messages
+messages:
+  join:
+    enabled: true
+    template: "<yellow>{player} joined</yellow>"
+  leave:
+    enabled: true
+    template: "<yellow>{player} left</yellow>"
+  death:
+    enabled: true
+    template: "<red>{player} died</red>"
+
+# Chat response configuration
+chat:
+  enabled: true
+  responses:
+    "hello": "<gray>{player}: Hello!"
+    "hi": "<gray>{player}: Hey there!"
+    "help": "<gray>{player}: I'm just a bot!"
+    "who are you": "<gray>{player}: I'm a fake player!"
+    "goodbye": "<gray>{player}: Goodbye!"
+
+# Skin settings
+skins:
+  # Folder to load skins from (relative to plugin folder)
+  folder: "skins"
+  # Default skin when none specified
+  default: "default"

@@ -1,0 +1,23 @@
+name: DistortedUniverseTeam
+version: ${version}
+main: dev.distorteduniverse.team.DistortedUniverseTeamPlugin
+api-version: '26.2'
+description: Team management with colored glow outlines, GUI, and AutoKit integration.
+author: hokay
+commands:
+  duteam:
+    description: Manage teams.
+    usage: /duteam <list|info|create|delete|setcolor|setglow|setmaxsize|setkit|friendlyfire|gui|join|leave|kick|reload|save>
+    aliases:
+      - dteam
+      - duteam
+permissions:
+  distorteduniverse.team.admin:
+    description: Allows managing teams and plugin settings.
+    default: op
+  distorteduniverse.team.join:
+    description: Allows joining teams via /duteam join.
+    default: true
+  duteam.admin.glow:
+    description: Admin override to see all glow colors regardless of team color.
+    default: op

@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.distorteduniverse"
-version = "0.9.2"
+version = "0.9.3-dev"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2-R0.1-SNAPSHOT")
@@ -37,6 +37,6 @@ tasks {
     }
 
     jar {
-        archiveBaseName.set("DistortedUniverseImmortal")
+        archiveBaseName.set("DistortedUniverseTeam")
     }
 }
