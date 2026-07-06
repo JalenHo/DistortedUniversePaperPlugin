@@ -18,3 +18,5 @@ rootProject.name = "DistortedUniversePaperPlugins"
 include("DistortedUniversePlayerEvent")
 include("DistortedUniverseImmortal")
 include("DistortedUniversePlayerDisguise")
+include("DistortedUniverseFakePlayer")
+include("DistortedUniverseTeam")
