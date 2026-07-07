@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class FakePlayerCommand implements CommandExecutor, TabExecutor {
@@ -70,15 +71,23 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         String name = args[1];
+        String key = name.toLowerCase();
+        if (store.get(key).isPresent()) {
+            sender.sendMessage(Component.text("Fake player already exists: " + name, NamedTextColor.RED));
+            return true;
+        }
+
         FakePlayerSettings settings = settingsService.settings();
         Location spawnLoc = sender instanceof Player player ? player.getLocation() : getDefaultSpawn();
 
         UUID uuid = UUID.randomUUID();
         FakePlayer fakePlayer = new FakePlayer(name, uuid, spawnLoc, settings.skins().defaultSkin(), false);
 
-        String key = name.toLowerCase();
+        if (!trySpawnFakePlayer(sender, fakePlayer)) {
+            return true;
+        }
+
         store.add(key, fakePlayer);
-        manager.spawnFakePlayer(fakePlayer);
         plugin.getProtectedEntities().add(uuid);
         store.save();
 
@@ -102,13 +111,33 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         FakePlayer fakePlayer = new FakePlayer(name, uuid, spawnLoc, settings.skins().defaultSkin(), false);
 
         String key = name.toLowerCase() + "_" + System.currentTimeMillis();
+        if (!trySpawnFakePlayer(sender, fakePlayer)) {
+            return true;
+        }
+
         store.add(key, fakePlayer);
-        manager.spawnFakePlayer(fakePlayer);
         plugin.getProtectedEntities().add(uuid);
         store.save();
 
         sender.sendMessage(Component.text("Spawned random fake player: " + name, NamedTextColor.GREEN));
         return true;
+    }
+
+    private boolean trySpawnFakePlayer(CommandSender sender, FakePlayer fakePlayer) {
+        try {
+            if (!manager.spawnFakePlayer(fakePlayer)) {
+                sender.sendMessage(Component.text("Failed to spawn fake player: " + fakePlayer.name(), NamedTextColor.RED));
+                return false;
+            }
+            return true;
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.WARNING, "Failed to spawn fake player " + fakePlayer.name(), exception);
+            sender.sendMessage(Component.text(
+                "Failed to spawn fake player: " + fakePlayer.name() + " (see server log)",
+                NamedTextColor.RED
+            ));
+            return false;
+        }
     }
 
     private boolean handleRemove(CommandSender sender, String[] args) {

@@ -143,7 +143,8 @@ public class FakePlayerManager {
             EnumWrappers.PlayerInfoAction.ADD_PLAYER,
             EnumWrappers.PlayerInfoAction.UPDATE_LISTED
         ));
-        packet.getPlayerInfoDataLists().write(0, List.of(data));
+        // Since 1.19.3, actions and entry lists share field indices in ProtocolLib; use index 1 for data.
+        packet.getPlayerInfoDataLists().write(1, List.of(data));
 
         try {
             protocolManager.sendServerPacket(receiver, packet);
