@@ -148,8 +148,8 @@ public record FakePlayerSettings(
 
         public void writeTo(ConfigurationSection config) {
             config.set("enabled", enabled);
-            if (!responses.isEmpty()) {
-                config.createSection("responses").set("", responses);
+            for (Map.Entry<String, String> entry : responses.entrySet()) {
+                config.set("responses." + entry.getKey(), entry.getValue());
             }
         }
     }

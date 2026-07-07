@@ -9,6 +9,14 @@
 
 crash-reports/
 logs/
+cache/
+libraries/
+versions/
+eula.txt
+server.properties
+bukkit.yml
+ops.json
+paper.jar
 
 *.log
 *.tmp
