@@ -43,16 +43,6 @@ messages:
     enabled: true
     template: "<red>{player} died</red>"
 
-# Chat response configuration
-chat:
-  enabled: true
-  responses:
-    "hello": "<gray>{player}: Hello!"
-    "hi": "<gray>{player}: Hey there!"
-    "help": "<gray>{player}: I'm just a bot!"
-    "who are you": "<gray>{player}: I'm a fake player!"
-    "goodbye": "<gray>{player}: Goodbye!"
-
 # Skin settings
 skins:
   # Folder to load skins from (relative to plugin folder)

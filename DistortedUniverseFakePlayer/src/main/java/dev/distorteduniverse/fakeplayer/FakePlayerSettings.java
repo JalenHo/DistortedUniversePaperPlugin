@@ -2,9 +2,7 @@ package dev.distorteduniverse.fakeplayer;
 
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public record FakePlayerSettings(
     boolean enabled,
@@ -12,7 +10,6 @@ public record FakePlayerSettings(
     WanderingSettings wandering,
     BehaviorSettings behavior,
     MessagesSettings messages,
-    ChatSettings chat,
     SkinsSettings skins
 ) {
     public static FakePlayerSettings from(ConfigurationSection config) {
@@ -22,7 +19,6 @@ public record FakePlayerSettings(
             WanderingSettings.from(config.getConfigurationSection("wandering")),
             BehaviorSettings.from(config.getConfigurationSection("behavior")),
             MessagesSettings.from(config.getConfigurationSection("messages")),
-            ChatSettings.from(config.getConfigurationSection("chat")),
             SkinsSettings.from(config.getConfigurationSection("skins"))
         );
     }
@@ -34,7 +30,6 @@ public record FakePlayerSettings(
         wandering.writeTo(config.createSection("wandering"));
         behavior.writeTo(config.createSection("behavior"));
         messages.writeTo(config.createSection("messages"));
-        chat.writeTo(config.createSection("chat"));
         skins.writeTo(config.createSection("skins"));
     }
 
@@ -149,34 +144,6 @@ public record FakePlayerSettings(
         public void writeTo(ConfigurationSection config) {
             config.set("enabled", enabled);
             config.set("template", template);
-        }
-    }
-
-    public record ChatSettings(
-        boolean enabled,
-        Map<String, String> responses
-    ) {
-        public static ChatSettings from(ConfigurationSection config) {
-            if (config == null) {
-                return new ChatSettings(true, Map.of());
-            }
-            Map<String, String> responses = new HashMap<>();
-            if (config.isConfigurationSection("responses")) {
-                for (Map.Entry<String, Object> entry : config.getConfigurationSection("responses").getValues(false).entrySet()) {
-                    responses.put(entry.getKey(), String.valueOf(entry.getValue()));
-                }
-            }
-            return new ChatSettings(
-                config.isBoolean("enabled") ? config.getBoolean("enabled") : true,
-                responses
-            );
-        }
-
-        public void writeTo(ConfigurationSection config) {
-            config.set("enabled", enabled);
-            for (Map.Entry<String, String> entry : responses.entrySet()) {
-                config.set("responses." + entry.getKey(), entry.getValue());
-            }
         }
     }
 

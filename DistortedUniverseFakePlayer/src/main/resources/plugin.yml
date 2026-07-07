@@ -2,12 +2,12 @@ name: DistortedUniverseFakePlayer
 version: ${version}
 main: dev.distorteduniverse.fakeplayer.DistortedUniverseFakePlayerPlugin
 api-version: '26.2'
-description: Fake player NPCs with custom skins, names, wandering AI, and configurable chat responses.
+description: Fake player NPCs with custom skins, names, wandering AI, and join/leave messages.
 author: hokay
 commands:
   dfp:
     description: Manage fake players.
-    usage: /dfp <help|spawn|spawn-random|remove|list|skin|skin-list|move|togglespam|chat|status|reload|save|get|config>
+    usage: /dfp <help|spawn|spawn-random|remove|list|skin|skin-list|move|togglespam|status|reload|save|get|config>
     aliases:
       - dfakeplayer
       - dfp

@@ -51,7 +51,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             case "skin-list" -> handleSkinList(sender);
             case "move" -> handleMove(sender, args);
             case "togglespam" -> handleToggleSpam(sender, args);
-            case "chat" -> handleChat(sender, args);
             case "status" -> handleStatus(sender);
             case "reload" -> handleReload(sender);
             case "save" -> handleSave(sender);
@@ -302,12 +301,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         return true;
     }
 
-    private boolean handleChat(CommandSender sender, String[] args) {
-        sender.sendMessage(Component.text("Chat responses are configured in config.yml", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Use /dfp reload to apply changes.", NamedTextColor.GRAY));
-        return true;
-    }
-
     private boolean handleStatus(CommandSender sender) {
         FakePlayerSettings settings = settingsService.settings();
 
@@ -402,7 +395,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(Arrays.asList("spawn", "spawn-random", "remove", "list", "skin", "skin-list", "move", "togglespam", "chat", "status", "reload", "save", "get", "config"), args[0]);
+            return filter(Arrays.asList("spawn", "spawn-random", "remove", "list", "skin", "skin-list", "move", "togglespam", "status", "reload", "save", "get", "config"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
