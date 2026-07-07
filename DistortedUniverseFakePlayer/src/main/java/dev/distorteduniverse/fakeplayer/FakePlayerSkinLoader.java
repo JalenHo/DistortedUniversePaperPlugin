@@ -67,7 +67,8 @@ public class FakePlayerSkinLoader {
     }
 
     private void createDefaultSkin(File skinsFolder) {
-        WrappedSignedProperty defaultProperty = new WrappedSignedProperty(
+        WrappedSignedProperty defaultProperty = WrappedSignedProperty.fromValues(
+            "textures",
             "eyJ0aW1lc3RhbXAiOjE1MTYyMzkwMjJ9.eyJ4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLCJ4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLCJzdHlsZXM9W3siZGlzcGxheSI6ImltYWxlIiwibGlua0lkIjoiMjY2NiIsImltYWdlTGVuZ3RoIjoiNDA4OCIsInZpZXdJbmRleCI6MC41fV0sInRzZXhhbXBsZXMiOnsibGlua0lkIjoiMDAwMCIsImRhdGFiYXNlSWQiOiIzNjM2NDg0MjM1NDY0ODkwNCIsInRzZXgiOiIxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MCIsInRpbmdsZSI6IjEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MCJ9LCJ0aW1lc3RhbXAiOjE1MTYyMzkwMjJ9",
             "Default"
         );
@@ -82,7 +83,7 @@ public class FakePlayerSkinLoader {
         String value = obj.has("value") ? obj.get("value").getAsString() : "";
         String signature = obj.has("signature") ? obj.get("signature").getAsString() : "";
 
-        return new WrappedSignedProperty(value, signature);
+        return WrappedSignedProperty.fromValues("textures", value, signature.isBlank() ? null : signature);
     }
 
     public Optional<WrappedSignedProperty> getSkin(String name) {

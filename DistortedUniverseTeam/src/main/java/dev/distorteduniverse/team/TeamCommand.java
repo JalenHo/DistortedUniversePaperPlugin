@@ -392,6 +392,8 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
                     yield filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[2]);
                 } else if (args.length == 3 && "setcolor".equals(args[0].toLowerCase())) {
                     yield filter(COLORS, args[2]);
+                } else if (args.length == 3 && "setglow".equals(args[0].toLowerCase())) {
+                    yield filter(Arrays.asList("on", "off"), args[2]);
                 }
                 yield Collections.emptyList();
             }
@@ -401,7 +403,6 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
                 }
                 yield Collections.emptyList();
             }
-            case "setglow" -> filter(Arrays.asList("on", "off"), args.length >= 3 ? args[2] : "");
             case "friendlyfire" -> filter(Arrays.asList("on", "off"), args.length >= 2 ? args[1] : "");
             default -> Collections.emptyList();
         };

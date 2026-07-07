@@ -5,6 +5,7 @@ import com.comphenix.protocol.ProtocolManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -49,8 +50,8 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (store != null) {
-            for (UUID uuid : manager.getSpawnedUuids()) {
+        if (store != null && manager != null) {
+            for (UUID uuid : new ArrayList<>(manager.getSpawnedUuids())) {
                 manager.despawnFakePlayer(uuid);
             }
             store.save();

@@ -2,6 +2,7 @@ package dev.distorteduniverse.fakeplayer;
 
 import org.bukkit.configuration.ConfigurationSection;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -133,18 +134,22 @@ public record FakePlayerSettings(
             if (config == null) {
                 return new ChatSettings(true, Map.of());
             }
+            Map<String, String> responses = new HashMap<>();
+            if (config.isConfigurationSection("responses")) {
+                for (Map.Entry<String, Object> entry : config.getConfigurationSection("responses").getValues(false).entrySet()) {
+                    responses.put(entry.getKey(), String.valueOf(entry.getValue()));
+                }
+            }
             return new ChatSettings(
                 config.isBoolean("enabled") ? config.getBoolean("enabled") : true,
-                config.isConfigurationSection("responses")
-                    ? config.getConfigurationSection("responses").getValues(false)
-                    : Map.of()
+                responses
             );
         }
 
         public void writeTo(ConfigurationSection config) {
             config.set("enabled", enabled);
-            if (!responses.isEmpty()) {
-                config.createSection("responses").set("", responses);
+            for (Map.Entry<String, String> entry : responses.entrySet()) {
+                config.set("responses." + entry.getKey(), entry.getValue());
             }
         }
     }

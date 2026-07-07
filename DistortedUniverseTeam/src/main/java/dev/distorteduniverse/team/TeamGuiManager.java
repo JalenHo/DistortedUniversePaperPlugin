@@ -17,7 +17,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
 
-public class TeamGuiManager {
+public class TeamGuiManager implements Listener {
     private final DistortedUniverseTeamPlugin plugin;
     private final TeamManager teamManager;
     private final Map<UUID, Integer> playerPages = new HashMap<>();

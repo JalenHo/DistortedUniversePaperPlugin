@@ -7,8 +7,14 @@ on:
       - Dev
       - dev
       - 1.21.11
+      - 26.2
   pull_request:
   workflow_dispatch:
+
+env:
+  MINECRAFT_VERSION: '26.2'
+  PAPER_API_VERSION: '26.2.build.53-alpha'
+  JAVA_VERSION: '25'
 
 jobs:
   build:
@@ -24,13 +30,28 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
+
+      - name: Verify Paper target
+        run: |
+          set -euo pipefail
+          grep -F "extra[\"paperApiVersion\"] = \"${PAPER_API_VERSION}\"" build.gradle.kts
+          grep -F "extra[\"javaVersion\"] = ${JAVA_VERSION}" build.gradle.kts
+          for plugin_yml in \
+            DistortedUniversePlayerEvent/src/main/resources/plugin.yml \
+            DistortedUniverseImmortal/src/main/resources/plugin.yml \
+            DistortedUniversePlayerDisguise/src/main/resources/plugin.yml \
+            DistortedUniverseFakePlayer/src/main/resources/plugin.yml \
+            DistortedUniverseTeam/src/main/resources/plugin.yml
+          do
+            grep -F "api-version: '${MINECRAFT_VERSION}'" "$plugin_yml"
+          done
 
       - name: Build
         run: ./gradlew clean build
@@ -54,4 +75,18 @@ jobs:
         with:
           name: DistortedUniversePlayerDisguise
           path: DistortedUniversePlayerDisguise/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload DistortedUniverseFakePlayer jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: DistortedUniverseFakePlayer
+          path: DistortedUniverseFakePlayer/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload DistortedUniverseTeam jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: DistortedUniverseTeam
+          path: DistortedUniverseTeam/build/libs/*.jar
           if-no-files-found: error

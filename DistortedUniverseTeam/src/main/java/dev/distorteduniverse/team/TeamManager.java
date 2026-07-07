@@ -1,12 +1,10 @@
 package dev.distorteduniverse.team;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.DyeColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team.Option;
-import org.bukkit.scoreboard.Team.OptionStatus;
 
 import java.util.*;
 
@@ -160,9 +158,9 @@ public class TeamManager {
         }
 
         scoreboardTeam.displayName(Component.text(team.displayName()));
-        scoreboardTeam.prefix(Component.text("[", net.kyori.adventure.text.format.NamedTextColor.fromColorBytes(0, 0, 0))
+        scoreboardTeam.prefix(Component.text("[", NamedTextColor.BLACK)
             .append(Component.text(team.displayName(), team.getTextColor()))
-            .append(Component.text("] ", net.kyori.adventure.text.format.NamedTextColor.fromColorBytes(0, 0, 0))));
+            .append(Component.text("] ", NamedTextColor.BLACK)));
 
         TeamSettings settings = plugin.getSettingsService().settings();
         if (!settings.friendlyFire()) {
@@ -189,34 +187,36 @@ public class TeamManager {
         boolean hasAdminGlow = player.hasPermission("duteam.admin.glow");
         boolean shouldGlow = team.glowEnabled() || hasAdminGlow;
 
+        player.setGlowing(shouldGlow);
         if (shouldGlow) {
-            scoreboardTeam.setOption(Option.GLOW_COLOR, getDyeColor(team.glowColor()));
-            scoreboardTeam.setOptionStatus(Option.GLOW_COLOR, OptionStatus.ALWAYS);
-        } else {
-            scoreboardTeam.setOptionStatus(Option.GLOW_COLOR, OptionStatus.NEVER);
+            NamedTextColor glowColor = toNamedTextColor(team.glowColor());
+            if (glowColor != null) {
+                scoreboardTeam.color(glowColor);
+            }
         }
     }
 
-    private DyeColor getDyeColor(String colorName) {
+    private NamedTextColor toNamedTextColor(String colorName) {
         return switch (colorName.toLowerCase()) {
-            case "black" -> DyeColor.BLACK;
-            case "dark_blue" -> DyeColor.BLUE;
-            case "dark_green" -> DyeColor.GREEN;
-            case "dark_aqua", "cyan" -> DyeColor.CYAN;
-            case "dark_red", "red" -> DyeColor.RED;
-            case "dark_purple", "purple" -> DyeColor.PURPLE;
-            case "gold", "orange" -> DyeColor.ORANGE;
-            case "gray" -> DyeColor.GRAY;
-            case "dark_gray" -> DyeColor.GRAY;
-            case "blue" -> DyeColor.BLUE;
-            case "green" -> DyeColor.GREEN;
-            case "aqua" -> DyeColor.CYAN;
-            case "light_purple", "pink" -> DyeColor.PINK;
-            case "yellow" -> DyeColor.YELLOW;
-            case "white" -> DyeColor.WHITE;
-            default -> DyeColor.WHITE;
+            case "black" -> NamedTextColor.BLACK;
+            case "dark_blue" -> NamedTextColor.DARK_BLUE;
+            case "dark_green" -> NamedTextColor.DARK_GREEN;
+            case "dark_aqua", "cyan" -> NamedTextColor.DARK_AQUA;
+            case "dark_red", "red" -> NamedTextColor.DARK_RED;
+            case "dark_purple", "purple" -> NamedTextColor.DARK_PURPLE;
+            case "gold", "orange" -> NamedTextColor.GOLD;
+            case "gray" -> NamedTextColor.GRAY;
+            case "dark_gray" -> NamedTextColor.DARK_GRAY;
+            case "blue" -> NamedTextColor.BLUE;
+            case "green" -> NamedTextColor.GREEN;
+            case "aqua" -> NamedTextColor.AQUA;
+            case "light_purple", "pink" -> NamedTextColor.LIGHT_PURPLE;
+            case "yellow" -> NamedTextColor.YELLOW;
+            case "white" -> NamedTextColor.WHITE;
+            default -> NamedTextColor.WHITE;
         };
     }
+
 
     public Optional<Team> getTeamById(String id) {
         return teamStore.get(id);
