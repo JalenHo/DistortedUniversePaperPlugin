@@ -22,6 +22,15 @@ wandering:
   # Use pathfinding (true) or simple teleport (false)
   use-pathfinding: true
 
+# Entity behavior (Paper Mannequin)
+behavior:
+  # When false, fake players can be damaged like normal entities
+  invulnerable: false
+  # Apply gravity to fake players
+  gravity: true
+  # Prevent physics from pushing fake players around
+  immovable: true
+
 # Admin toggles for messages
 messages:
   join:
@@ -33,16 +42,6 @@ messages:
   death:
     enabled: true
     template: "<red>{player} died</red>"
-
-# Chat response configuration
-chat:
-  enabled: true
-  responses:
-    "hello": "<gray>{player}: Hello!"
-    "hi": "<gray>{player}: Hey there!"
-    "help": "<gray>{player}: I'm just a bot!"
-    "who are you": "<gray>{player}: I'm a fake player!"
-    "goodbye": "<gray>{player}: Goodbye!"
 
 # Skin settings
 skins:

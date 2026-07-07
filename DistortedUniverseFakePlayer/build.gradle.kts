@@ -10,7 +10,6 @@ val javaVersion: Int by rootProject.extra
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
-    compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

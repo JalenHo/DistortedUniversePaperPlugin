@@ -1,14 +1,10 @@
 package dev.distorteduniverse.fakeplayer;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.Optional;
 
 public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerSettingsService settingsService;
@@ -17,12 +13,9 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerManager manager;
     private WanderingService wanderingService;
     private FakePlayerListener listener;
-    private final Set<UUID> protectedEntities = new HashSet<>();
 
     @Override
     public void onEnable() {
-        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
-
         settingsService = new FakePlayerSettingsService(this);
         settingsService.load();
 
@@ -32,11 +25,21 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         skinLoader = new FakePlayerSkinLoader(this);
         skinLoader.load(settingsService.settings().skins());
 
-        manager = new FakePlayerManager(protocolManager, skinLoader, store);
+        manager = new FakePlayerManager(
+            this,
+            skinLoader,
+            store,
+            settingsService.settings().behavior()
+        );
 
-        wanderingService = new WanderingService(manager, store, settingsService.settings().wandering());
+        wanderingService = new WanderingService(
+            this,
+            manager,
+            store,
+            settingsService.settings().wandering()
+        );
 
-        listener = new FakePlayerListener(manager, store, settingsService.settings(), protectedEntities);
+        listener = new FakePlayerListener(manager, settingsService);
         getServer().getPluginManager().registerEvents(listener, this);
 
         FakePlayerCommand command = new FakePlayerCommand(this);
@@ -51,7 +54,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (store != null && manager != null) {
-            for (UUID uuid : new ArrayList<>(manager.getSpawnedUuids())) {
+            for (var uuid : new ArrayList<>(manager.getSpawnedUuids())) {
                 manager.despawnFakePlayer(uuid);
             }
             store.save();
@@ -72,11 +75,15 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         }
 
         int spawned = 0;
-        for (FakePlayer fp : store.getAll()) {
+        for (String key : store.getKeys()) {
+            Optional<FakePlayer> opt = store.get(key);
+            if (opt.isEmpty()) {
+                continue;
+            }
+            FakePlayer fp = opt.get();
             if (manager.spawnFakePlayer(fp)) {
-                protectedEntities.add(fp.uuid());
                 if (fp.isWandering()) {
-                    wanderingService.startWandering(fp.name().toLowerCase(), fp);
+                    wanderingService.startWandering(key, fp);
                 }
                 spawned++;
             }
@@ -102,9 +109,5 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
 
     public WanderingService getWanderingService() {
         return wanderingService;
-    }
-
-    public Set<UUID> getProtectedEntities() {
-        return protectedEntities;
     }
 }

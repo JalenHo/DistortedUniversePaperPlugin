@@ -22,6 +22,7 @@ public class TeamGuiManager implements Listener {
     private final TeamManager teamManager;
     private final Map<UUID, Integer> playerPages = new HashMap<>();
     private final Map<UUID, String> playerViewingTeam = new HashMap<>();
+    private final Map<UUID, String> playerSelectingKitForTeam = new HashMap<>();
 
     private static final int TEAMS_PER_PAGE = 6;
     private static final int[] TEAM_SLOTS = {10, 12, 14, 16, 28, 30};
@@ -70,6 +71,51 @@ public class TeamGuiManager implements Listener {
         player.openInventory(gui);
     }
 
+    public void openKitPickerGui(Player player, String teamId) {
+        playerSelectingKitForTeam.put(player.getUniqueId(), teamId);
+        updateKitPickerGui(player, teamId);
+    }
+
+    public void updateKitPickerGui(Player player, String teamId) {
+        Team team = teamManager.getTeamById(teamId).orElse(null);
+        if (team == null) {
+            player.sendMessage(Component.text("Team not found!", NamedTextColor.RED));
+            return;
+        }
+
+        List<String> kits = new ArrayList<>(plugin.getAutoKitIntegration().listKits());
+        String title = "Select Kit: " + team.displayName();
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(title, NamedTextColor.GOLD));
+
+        gui.setItem(0, createKitOptionItem("None", team.autoKit() == null));
+        for (int i = 0; i < kits.size() && i < 44; i++) {
+            String kitId = kits.get(i);
+            gui.setItem(i + 1, createKitOptionItem(kitId, kitId.equals(team.autoKit())));
+        }
+
+        gui.setItem(49, createBackItem());
+        gui.setItem(53, createCloseItem());
+
+        for (int i = 0; i < gui.getSize(); i++) {
+            if (gui.getItem(i) == null) {
+                gui.setItem(i, createFillerItem());
+            }
+        }
+
+        player.openInventory(gui);
+    }
+
+    private ItemStack createKitOptionItem(String kitId, boolean selected) {
+        ItemStack item = new ItemStack(selected ? Material.LIME_DYE : Material.PAPER);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(kitId, selected ? NamedTextColor.GREEN : NamedTextColor.AQUA));
+        meta.lore(List.of(
+            Component.text(selected ? "Currently assigned" : "Click to assign", NamedTextColor.GRAY)
+        ));
+        item.setItemMeta(meta);
+        return item;
+    }
+
     public void openTeamDetailGui(Player player, String teamId) {
         Team team = teamManager.getTeamById(teamId).orElse(null);
         if (team == null) {
@@ -115,6 +161,12 @@ public class TeamGuiManager implements Listener {
     public void handleClick(Player player, int slot, ItemStack item) {
         if (item == null || !item.hasItemMeta()) return;
 
+        String selectingKitTeamId = playerSelectingKitForTeam.get(player.getUniqueId());
+        if (selectingKitTeamId != null) {
+            handleKitPickerClick(player, slot, item, selectingKitTeamId);
+            return;
+        }
+
         String viewingTeamId = playerViewingTeam.get(player.getUniqueId());
 
         if (viewingTeamId != null) {
@@ -144,7 +196,16 @@ public class TeamGuiManager implements Listener {
     }
 
     private void handleTeamDetailClick(Player player, int slot, ItemStack item, String teamId) {
-        String lore = item.getItemMeta().lore().toString();
+        if (slot == 38) {
+            if (!plugin.getAutoKitIntegration().isAvailable()) {
+                player.sendMessage(Component.text("AutoKit is not installed.", NamedTextColor.RED));
+                return;
+            }
+            openKitPickerGui(player, teamId);
+            return;
+        }
+
+        String lore = item.getItemMeta().lore() != null ? item.getItemMeta().lore().toString() : "";
 
         if (slot == 49) {
             playerViewingTeam.remove(player.getUniqueId());
@@ -160,6 +221,41 @@ public class TeamGuiManager implements Listener {
         } else if (slot == 53 && lore.contains("close")) {
             player.closeInventory();
         }
+    }
+
+    private void handleKitPickerClick(Player player, int slot, ItemStack item, String teamId) {
+        if (slot == 49) {
+            playerSelectingKitForTeam.remove(player.getUniqueId());
+            openTeamDetailGui(player, teamId);
+            return;
+        }
+
+        if (slot == 53) {
+            playerSelectingKitForTeam.remove(player.getUniqueId());
+            player.closeInventory();
+            return;
+        }
+
+        if (slot < 0 || slot >= 45) {
+            return;
+        }
+
+        String kitId = PlainTextComponentSerializer.plainText().serialize(item.getItemMeta().displayName());
+        String assignedKit = "None".equalsIgnoreCase(kitId) ? null : kitId;
+
+        Team team = teamManager.getTeamById(teamId).orElse(null);
+        if (team == null) {
+            player.sendMessage(Component.text("Team not found!", NamedTextColor.RED));
+            return;
+        }
+
+        teamManager.updateTeamSettings(team.withAutoKit(assignedKit));
+        player.sendMessage(Component.text(
+            "AutoKit for " + team.displayName() + " set to " + (assignedKit != null ? assignedKit : "none"),
+            NamedTextColor.GREEN
+        ));
+        playerSelectingKitForTeam.remove(player.getUniqueId());
+        openTeamDetailGui(player, teamId);
     }
 
     private boolean isTeamSlot(int slot) {
@@ -303,7 +399,9 @@ public class TeamGuiManager implements Listener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (!playerPages.containsKey(player.getUniqueId()) && !playerViewingTeam.containsKey(player.getUniqueId())) return;
+        if (!playerPages.containsKey(player.getUniqueId())
+            && !playerViewingTeam.containsKey(player.getUniqueId())
+            && !playerSelectingKitForTeam.containsKey(player.getUniqueId())) return;
 
         event.setCancelled(true);
         ItemStack item = event.getCurrentItem();

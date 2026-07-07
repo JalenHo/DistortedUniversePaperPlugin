@@ -51,7 +51,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             case "skin-list" -> handleSkinList(sender);
             case "move" -> handleMove(sender, args);
             case "togglespam" -> handleToggleSpam(sender, args);
-            case "chat" -> handleChat(sender, args);
             case "status" -> handleStatus(sender);
             case "reload" -> handleReload(sender);
             case "save" -> handleSave(sender);
@@ -88,7 +87,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         store.add(key, fakePlayer);
-        plugin.getProtectedEntities().add(uuid);
         store.save();
 
         sender.sendMessage(Component.text("Spawned fake player: " + name, NamedTextColor.GREEN));
@@ -116,7 +114,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         store.add(key, fakePlayer);
-        plugin.getProtectedEntities().add(uuid);
         store.save();
 
         sender.sendMessage(Component.text("Spawned random fake player: " + name, NamedTextColor.GREEN));
@@ -155,9 +152,8 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
                     if (manager.isSpawned(fp.uuid())) {
                         manager.despawnFakePlayer(fp.uuid());
                     }
-                    plugin.getProtectedEntities().remove(fp.uuid());
-                    store.remove(key);
                     wanderingService.stopWandering(fp.uuid());
+                    store.remove(key);
                 });
                 count++;
             }
@@ -176,7 +172,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         if (manager.isSpawned(fp.uuid())) {
             manager.despawnFakePlayer(fp.uuid());
         }
-        plugin.getProtectedEntities().remove(fp.uuid());
         wanderingService.stopWandering(fp.uuid());
         store.remove(target);
         store.save();
@@ -274,12 +269,14 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
                 try {
                     double radius = Double.parseDouble(args[2]);
                     wanderingService.startWanderingAll(radius);
+                    store.save();
                     sender.sendMessage(Component.text("Started wandering all fake players with radius " + radius, NamedTextColor.GREEN));
                 } catch (NumberFormatException e) {
                     sender.sendMessage(Component.text("Invalid radius", NamedTextColor.RED));
                 }
             } else {
                 wanderingService.startWanderingAll(settingsService.settings().wandering().defaultRadius());
+                store.save();
                 sender.sendMessage(Component.text("Started wandering all fake players", NamedTextColor.GREEN));
             }
             return true;
@@ -293,18 +290,13 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
 
         FakePlayer fp = optPlayer.get();
         wanderingService.startWandering(target, fp);
+        store.save();
         sender.sendMessage(Component.text("Started wandering for " + fp.name(), NamedTextColor.GREEN));
         return true;
     }
 
     private boolean handleToggleSpam(CommandSender sender, String[] args) {
         sender.sendMessage(Component.text("Message toggles are configured in config.yml", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Use /dfp reload to apply changes.", NamedTextColor.GRAY));
-        return true;
-    }
-
-    private boolean handleChat(CommandSender sender, String[] args) {
-        sender.sendMessage(Component.text("Chat responses are configured in config.yml", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("Use /dfp reload to apply changes.", NamedTextColor.GRAY));
         return true;
     }
@@ -323,7 +315,10 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
 
     private boolean handleReload(CommandSender sender) {
         settingsService.reload();
-        skinLoader.load(settingsService.settings().skins());
+        FakePlayerSettings settings = settingsService.settings();
+        skinLoader.load(settings.skins());
+        manager.updateBehavior(settings.behavior());
+        wanderingService.updateSettings(settings.wandering());
         sender.sendMessage(Component.text("Configuration reloaded!", NamedTextColor.GREEN));
         return true;
     }
@@ -367,6 +362,9 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         sender.sendMessage(Component.text("Wandering Radius: " + settings.wandering().defaultRadius(), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Tick Interval: " + settings.wandering().tickInterval(), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Use Pathfinding: " + settings.wandering().usePathfinding(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Invulnerable: " + settings.behavior().invulnerable(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Gravity: " + settings.behavior().gravity(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Immovable: " + settings.behavior().immovable(), NamedTextColor.GRAY));
         return true;
     }
 
@@ -397,7 +395,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(Arrays.asList("spawn", "spawn-random", "remove", "list", "skin", "skin-list", "move", "togglespam", "chat", "status", "reload", "save", "get", "config"), args[0]);
+            return filter(Arrays.asList("spawn", "spawn-random", "remove", "list", "skin", "skin-list", "move", "togglespam", "status", "reload", "save", "get", "config"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
