@@ -6,11 +6,11 @@ on:
       tag_name:
         description: Git tag to create or update for the prerelease.
         required: true
-        default: v0.9.2
+        default: v0.9.3
       release_name:
         description: GitHub release title.
         required: true
-        default: DistortedUniverse Plugins v0.9.2 for 1.21.11
+        default: DistortedUniverse Plugins v0.9.3 for Paper 26.2
 
 permissions:
   contents: write
@@ -19,8 +19,9 @@ jobs:
   prerelease:
     runs-on: ubuntu-latest
     env:
-      MINECRAFT_VERSION: '1.21.11'
-      PAPER_API_VERSION: '1.21.11-R0.1-SNAPSHOT'
+      MINECRAFT_VERSION: '26.2'
+      PAPER_API_VERSION: '26.2.build.53-alpha'
+      JAVA_VERSION: '25'
 
     steps:
       - name: Checkout
@@ -30,7 +31,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -38,11 +39,20 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Verify 1.21.11 target
+      - name: Verify Paper target
         run: |
           set -euo pipefail
-          grep -R "paper-api:${PAPER_API_VERSION}" DistortedUniversePlayerEvent/build.gradle.kts DistortedUniverseImmortal/build.gradle.kts DistortedUniversePlayerDisguise/build.gradle.kts
-          grep -R "api-version: '${MINECRAFT_VERSION}'" DistortedUniversePlayerEvent/src/main/resources/plugin.yml DistortedUniverseImmortal/src/main/resources/plugin.yml DistortedUniversePlayerDisguise/src/main/resources/plugin.yml
+          grep -F "extra[\"paperApiVersion\"] = \"${PAPER_API_VERSION}\"" build.gradle.kts
+          grep -F "extra[\"javaVersion\"] = ${JAVA_VERSION}" build.gradle.kts
+          for plugin_yml in \
+            DistortedUniversePlayerEvent/src/main/resources/plugin.yml \
+            DistortedUniverseImmortal/src/main/resources/plugin.yml \
+            DistortedUniversePlayerDisguise/src/main/resources/plugin.yml \
+            DistortedUniverseFakePlayer/src/main/resources/plugin.yml \
+            DistortedUniverseTeam/src/main/resources/plugin.yml
+          do
+            grep -F "api-version: '${MINECRAFT_VERSION}'" "$plugin_yml"
+          done
 
       - name: Build plugin jars
         run: ./gradlew clean build
@@ -55,19 +65,26 @@ jobs:
             DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar
             DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar
             DistortedUniversePlayerDisguise/build/libs/DistortedUniversePlayerDisguise-*.jar
+            DistortedUniverseFakePlayer/build/libs/DistortedUniverseFakePlayer-*.jar
+            DistortedUniverseTeam/build/libs/DistortedUniverseTeam-*.jar
           if-no-files-found: error
 
       - name: Write release notes
         run: |
-          cat > release-notes.md <<'EOF'
-          Pre-release builds targeting Minecraft/Paper 1.21.11.
+          cat > release-notes.md <<EOF
+          Pre-release builds targeting Minecraft/Paper ${MINECRAFT_VERSION}.
+
+          Requirements:
+          - Java ${JAVA_VERSION}
+          - Paper ${MINECRAFT_VERSION}
+          - ProtocolLib 5.4.0 or newer for DistortedUniversePlayerDisguise and DistortedUniverseFakePlayer
 
           Assets:
           - DistortedUniversePlayerEvent
           - DistortedUniverseImmortal
           - DistortedUniversePlayerDisguise
-
-          DistortedUniversePlayerDisguise requires a ProtocolLib runtime jar compatible with Java 21 and Paper 1.21.11.
+          - DistortedUniverseFakePlayer
+          - DistortedUniverseTeam
           EOF
 
       - name: Create or update GitHub prerelease
@@ -95,4 +112,6 @@ jobs:
             DistortedUniversePlayerEvent/build/libs/DistortedUniversePlayerEvent-*.jar \
             DistortedUniverseImmortal/build/libs/DistortedUniverseImmortal-*.jar \
             DistortedUniversePlayerDisguise/build/libs/DistortedUniversePlayerDisguise-*.jar \
+            DistortedUniverseFakePlayer/build/libs/DistortedUniverseFakePlayer-*.jar \
+            DistortedUniverseTeam/build/libs/DistortedUniverseTeam-*.jar \
             --clobber
