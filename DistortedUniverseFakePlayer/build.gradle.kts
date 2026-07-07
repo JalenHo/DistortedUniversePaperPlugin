@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.distorteduniverse"
-version = "0.9.3-dev"
+version = "0.9.4-dev"
 
 val paperApiVersion: String by rootProject.extra
 val javaVersion: Int by rootProject.extra

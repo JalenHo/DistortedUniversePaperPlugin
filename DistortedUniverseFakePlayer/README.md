@@ -1,65 +1,42 @@
 # DistortedUniverseFakePlayer
 
-Fake player NPCs with custom skins, names, wandering AI, and configurable chat responses.
+Server-side fake player bots using Paper Mannequin entities. Bots look like normal players (no extra nametags) and can walk around via commands.
 
 ## Features
 
-- **Custom Skins**: Load skins from JSON files in the `skins/` folder
-- **Preset Names**: Configure a list of names for random spawning
-- **Wandering AI**: NPCs can wander within a configurable radius
-- **Chat Responses**: Configurable responses to player chat messages
-- **Join/Leave Messages**: Customizable notification messages
-- **Damage Prevention**: Fake players are invulnerable by default
+- **Spawn / Despawn**: Create and remove fake players at your location
+- **Command Walking**: Wander nearby or walk to coordinates
+- **Default Skin**: Uses `skins/default.json` for player appearance
+- **Persistence**: Bot data survives server restarts via `fakeplayers.yml`
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/dfp spawn <name>` | Spawn a fake player with a specific name |
-| `/dfp spawn-random` | Spawn a fake player with a random preset name |
-| `/dfp remove <name\|all>` | Remove one or all fake players |
-| `/dfp list` | List all fake players and their status |
-| `/dfp skin <player> <skin>` | Change a fake player's skin |
-| `/dfp skin-list` | List available skins |
-| `/dfp move <name\|all> [x y z]` | Move or start wandering |
-| `/dfp status` | Show plugin status |
+| `/dfp spawn <name>` | Spawn a fake player at your location |
+| `/dfp despawn <name\|all>` | Despawn one or all fake players (`remove` alias supported) |
+| `/dfp move <name> wander [radius]` | Start wandering within radius (default from config) |
+| `/dfp move <name> <x> <y> <z>` | Walk to coordinates |
+| `/dfp move <name> stop` | Stop movement |
+| `/dfp list` | List all fake players and status |
 | `/dfp reload` | Reload configuration |
-| `/dfp save` | Save all data |
 
 ## Configuration
 
 ```yaml
-config-version: 1
+config-version: 2
 enabled: true
 
-names:
-  - "Steve"
-  - "Alex"
-  - "Herobrine"
-  - "Notch"
+movement:
+  speed: 0.2
+  arrival-distance: 1.5
+  tick-interval: 2
+  wander-radius: 10
 
-wandering:
-  default-radius: 10
-  tick-interval: 40
-  use-pathfinding: true
-
-messages:
-  join:
-    enabled: true
-    template: "<yellow>{player} joined</yellow>"
-  leave:
-    enabled: true
-    template: "<yellow>{player} left</yellow>"
-  death:
-    enabled: true
-    template: "<red>{player} died</red>"
-
-chat:
-  enabled: true
-  responses:
-    "hello": "<gray>{player}: Hello!"
-    "hi": "<gray>{player}: Hey there!"
-    "help": "<gray>{player}: I'm just a bot!"
+behavior:
+  invulnerable: false
+  gravity: true
+  immovable: false
 
 skins:
   folder: "skins"
@@ -80,9 +57,8 @@ Place skin JSON files in the `skins/` folder (relative to plugin directory). Eac
 
 ## Requirements
 
-- Paper API 26.2 (Minecraft 1.21.4)
-- ProtocolLib at runtime
-- Java 21
+- Paper API 26.2 (Minecraft 26.2)
+- Java 25
 
 ## Permissions
 
