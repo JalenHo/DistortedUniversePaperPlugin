@@ -68,7 +68,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         Location spawnLoc = sender instanceof Player player ? player.getLocation() : getDefaultSpawn();
 
         UUID uuid = UUID.randomUUID();
-        FakePlayer fakePlayer = new FakePlayer(name, uuid, spawnLoc, settings.skins().defaultSkin(), false);
+        FakePlayer fakePlayer = new FakePlayer(name, uuid, manager.snapSpawnLocation(spawnLoc), settings.skins().defaultSkin(), false);
 
         if (!trySpawnFakePlayer(sender, fakePlayer)) {
             return true;
@@ -151,14 +151,8 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
 
         sender.sendMessage(Component.text("=== Fake Players ===", NamedTextColor.GOLD));
         for (FakePlayer fp : players) {
-            String status;
-            if (!manager.isSpawned(fp.uuid())) {
-                status = "DESPAWNED";
-            } else if (movementService.isMoving(fp.uuid())) {
-                status = "WALKING";
-            } else {
-                status = "IDLE";
-            }
+            boolean spawned = manager.isSpawned(fp.uuid());
+            String status = !spawned ? "DESPAWNED" : movementService.isMoving(fp.uuid()) ? "WALKING" : "IDLE";
 
             NamedTextColor color = switch (status) {
                 case "WALKING" -> NamedTextColor.AQUA;

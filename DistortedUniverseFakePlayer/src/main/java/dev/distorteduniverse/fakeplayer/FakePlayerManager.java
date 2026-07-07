@@ -2,31 +2,25 @@ package dev.distorteduniverse.fakeplayer;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mannequin;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
 public class FakePlayerManager {
-    private final JavaPlugin plugin;
     private final FakePlayerSkinLoader skinLoader;
     private final FakePlayerStore store;
     private FakePlayerSettings.BehaviorSettings behavior;
-    private final Map<UUID, UUID> fakeToEntity = new HashMap<>();
-    private final Set<UUID> spawnedEntities = new HashSet<>();
+    private final Map<UUID, Mannequin> activeMannequins = new HashMap<>();
 
     public FakePlayerManager(
-        JavaPlugin plugin,
         FakePlayerSkinLoader skinLoader,
         FakePlayerStore store,
         FakePlayerSettings.BehaviorSettings behavior
     ) {
-        this.plugin = plugin;
         this.skinLoader = skinLoader;
         this.store = store;
         this.behavior = behavior;
@@ -34,35 +28,44 @@ public class FakePlayerManager {
 
     public boolean spawnFakePlayer(FakePlayer fakePlayer) {
         UUID uuid = fakePlayer.uuid();
-        if (spawnedEntities.contains(uuid)) {
+        if (activeMannequins.containsKey(uuid)) {
             return false;
         }
 
-        Location location = fakePlayer.location();
+        Location location = snapSpawnLocation(fakePlayer.location());
         World world = location.getWorld();
         if (world == null) {
             return false;
         }
 
-        Mannequin mannequin = (Mannequin) world.spawnEntity(location, EntityType.MANNEQUIN);
-        applyAppearance(mannequin, fakePlayer);
-        configureBehavior(mannequin);
+        world.getChunkAt(location).load(true);
+        world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, true);
 
-        fakeToEntity.put(uuid, mannequin.getUniqueId());
-        spawnedEntities.add(uuid);
+        Mannequin mannequin = (Mannequin) world.spawnEntity(location, EntityType.MANNEQUIN);
+        if (mannequin == null || mannequin.isDead()) {
+            return false;
+        }
+
+        configureBehavior(mannequin);
+        applyAppearance(mannequin, fakePlayer);
+        activeMannequins.put(uuid, mannequin);
         return true;
     }
 
     public boolean despawnFakePlayer(UUID uuid) {
-        spawnedEntities.remove(uuid);
-        UUID entityUuid = fakeToEntity.remove(uuid);
-        if (entityUuid == null) {
+        Mannequin mannequin = activeMannequins.remove(uuid);
+        if (mannequin == null) {
             return false;
         }
 
-        Entity entity = Bukkit.getEntity(entityUuid);
-        if (entity != null) {
-            entity.remove();
+        World world = mannequin.getWorld();
+        if (world != null) {
+            Location location = mannequin.getLocation();
+            world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
+        }
+
+        if (mannequin.isValid()) {
+            mannequin.remove();
         }
         return true;
     }
@@ -77,24 +80,30 @@ public class FakePlayerManager {
     }
 
     public Optional<Mannequin> getMannequin(UUID fakePlayerUuid) {
-        return getEntity(fakePlayerUuid)
-            .filter(entity -> entity instanceof Mannequin)
-            .map(entity -> (Mannequin) entity);
+        return getEntity(fakePlayerUuid).map(entity -> (Mannequin) entity);
     }
 
     public Optional<Entity> getEntity(UUID fakePlayerUuid) {
-        UUID entityUuid = fakeToEntity.get(fakePlayerUuid);
-        if (entityUuid == null) {
+        Mannequin mannequin = activeMannequins.get(fakePlayerUuid);
+        if (mannequin == null || mannequin.isDead()) {
+            if (mannequin != null) {
+                activeMannequins.remove(fakePlayerUuid);
+            }
             return Optional.empty();
+        }
+        return Optional.of(mannequin);
+    }
+
+    public Location snapSpawnLocation(Location location) {
+        World world = location.getWorld();
+        if (world == null) {
+            return location;
         }
 
-        Entity entity = Bukkit.getEntity(entityUuid);
-        if (entity == null || !entity.isValid()) {
-            fakeToEntity.remove(fakePlayerUuid);
-            spawnedEntities.remove(fakePlayerUuid);
-            return Optional.empty();
-        }
-        return Optional.of(entity);
+        Location snapped = location.clone();
+        int groundY = world.getHighestBlockYAt(snapped);
+        snapped.setY(groundY + 1.0);
+        return snapped;
     }
 
     private void applyAppearance(Mannequin mannequin, FakePlayer fakePlayer) {
@@ -107,7 +116,7 @@ public class FakePlayerManager {
             skinProperty = skinLoader.getSkin("default");
         }
 
-        PlayerProfile profile = skinLoader.createProfile(fakePlayer.uuid(), fakePlayer.name(), skinProperty.orElse(null));
+        PlayerProfile profile = skinLoader.createProfile(mannequin.getUniqueId(), fakePlayer.name(), skinProperty.orElse(null));
         mannequin.setProfile(ResolvableProfile.resolvableProfile(profile));
     }
 
@@ -118,33 +127,34 @@ public class FakePlayerManager {
     }
 
     private void configureBehavior(Mannequin mannequin) {
+        mannequin.setInvulnerable(behavior.invulnerable());
         mannequin.setGravity(behavior.gravity());
         mannequin.setImmovable(behavior.immovable());
-        mannequin.setInvulnerable(behavior.invulnerable());
     }
 
     public boolean isSpawned(UUID uuid) {
-        return spawnedEntities.contains(uuid) && getEntity(uuid).isPresent();
+        return getEntity(uuid).isPresent();
     }
 
     public Collection<UUID> getSpawnedUuids() {
-        return Collections.unmodifiableCollection(new HashSet<>(spawnedEntities));
+        return Collections.unmodifiableCollection(new HashSet<>(activeMannequins.keySet()));
     }
 
     public boolean isManagedEntity(UUID entityUuid) {
-        return fakeToEntity.containsValue(entityUuid);
+        return activeMannequins.values().stream()
+            .anyMatch(mannequin -> mannequin.getUniqueId().equals(entityUuid));
     }
 
     public Optional<UUID> getFakePlayerUuid(UUID entityUuid) {
-        return fakeToEntity.entrySet().stream()
-            .filter(entry -> entry.getValue().equals(entityUuid))
+        return activeMannequins.entrySet().stream()
+            .filter(entry -> entry.getValue().getUniqueId().equals(entityUuid))
             .map(Map.Entry::getKey)
             .findFirst();
     }
 
     public void updateBehavior(FakePlayerSettings.BehaviorSettings newBehavior) {
         this.behavior = newBehavior;
-        for (UUID fakeUuid : new ArrayList<>(spawnedEntities)) {
+        for (UUID fakeUuid : new ArrayList<>(activeMannequins.keySet())) {
             getEntity(fakeUuid).ifPresent(entity -> {
                 if (entity instanceof Mannequin mannequin) {
                     mannequin.setGravity(newBehavior.gravity());

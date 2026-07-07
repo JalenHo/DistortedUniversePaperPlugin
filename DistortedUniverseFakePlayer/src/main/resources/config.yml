@@ -9,7 +9,7 @@ movement:
   wander-radius: 10
 
 behavior:
-  invulnerable: false
+  invulnerable: true
   gravity: true
   immovable: false
 

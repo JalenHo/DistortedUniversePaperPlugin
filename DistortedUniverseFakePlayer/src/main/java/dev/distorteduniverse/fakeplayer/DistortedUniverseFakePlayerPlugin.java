@@ -25,7 +25,6 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         skinLoader.load(settingsService.settings().skins());
 
         manager = new FakePlayerManager(
-            this,
             skinLoader,
             store,
             settingsService.settings().behavior()
