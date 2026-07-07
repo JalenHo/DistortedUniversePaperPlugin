@@ -10,6 +10,7 @@ public record FakePlayerSettings(
     boolean enabled,
     List<String> names,
     WanderingSettings wandering,
+    BehaviorSettings behavior,
     MessagesSettings messages,
     ChatSettings chat,
     SkinsSettings skins
@@ -19,6 +20,7 @@ public record FakePlayerSettings(
             getBoolean(config, "enabled", true),
             getStringList(config, "names", List.of("Steve", "Alex", "Herobrine", "Notch")),
             WanderingSettings.from(config.getConfigurationSection("wandering")),
+            BehaviorSettings.from(config.getConfigurationSection("behavior")),
             MessagesSettings.from(config.getConfigurationSection("messages")),
             ChatSettings.from(config.getConfigurationSection("chat")),
             SkinsSettings.from(config.getConfigurationSection("skins"))
@@ -30,6 +32,7 @@ public record FakePlayerSettings(
         config.set("enabled", enabled);
         config.set("names", names);
         wandering.writeTo(config.createSection("wandering"));
+        behavior.writeTo(config.createSection("behavior"));
         messages.writeTo(config.createSection("messages"));
         chat.writeTo(config.createSection("chat"));
         skins.writeTo(config.createSection("skins"));
@@ -41,6 +44,29 @@ public record FakePlayerSettings(
 
     private static List<String> getStringList(ConfigurationSection config, String path, List<String> fallback) {
         return config.isList(path) ? config.getStringList(path) : fallback;
+    }
+
+    public record BehaviorSettings(
+        boolean invulnerable,
+        boolean gravity,
+        boolean immovable
+    ) {
+        public static BehaviorSettings from(ConfigurationSection config) {
+            if (config == null) {
+                return new BehaviorSettings(false, true, true);
+            }
+            return new BehaviorSettings(
+                getBoolean(config, "invulnerable", false),
+                getBoolean(config, "gravity", true),
+                getBoolean(config, "immovable", true)
+            );
+        }
+
+        public void writeTo(ConfigurationSection config) {
+            config.set("invulnerable", invulnerable);
+            config.set("gravity", gravity);
+            config.set("immovable", immovable);
+        }
     }
 
     public record WanderingSettings(

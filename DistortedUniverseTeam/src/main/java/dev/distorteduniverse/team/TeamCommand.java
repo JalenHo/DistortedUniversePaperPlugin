@@ -49,6 +49,7 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
             case "setglow" -> handleSetGlow(sender, args);
             case "setmaxsize" -> handleSetMaxSize(sender, args);
             case "setkit" -> handleSetKit(sender, args);
+            case "kit" -> handleKit(sender, args);
             case "friendlyfire" -> handleFriendlyFire(sender, args);
             case "gui" -> handleGui(sender);
             case "join" -> handleJoin(sender, args);
@@ -238,12 +239,84 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
     private boolean handleFriendlyFire(CommandSender sender, String[] args) {
         if (args.length >= 2) {
             boolean enabled = args[1].equalsIgnoreCase("on");
-            settingsService.settings().writeTo(plugin.getConfig());
-            plugin.reloadConfig();
+            settingsService.updateSettings(settingsService.settings().withFriendlyFire(enabled));
+            teamManager.refreshFriendlyFire();
             sender.sendMessage(Component.text("Friendly fire " + (enabled ? "enabled" : "disabled"), NamedTextColor.GREEN));
         } else {
             sender.sendMessage(Component.text("Current friendly fire: " +
                 (settingsService.settings().friendlyFire() ? "ENABLED" : "DISABLED"), NamedTextColor.AQUA));
+        }
+        return true;
+    }
+
+    private boolean handleKit(CommandSender sender, String[] args) {
+        AutoKitIntegration autoKit = plugin.getAutoKitIntegration();
+        if (!autoKit.isAvailable()) {
+            sender.sendMessage(Component.text("AutoKit is not installed.", NamedTextColor.RED));
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Usage: /duteam kit <list|create|edit> ...", NamedTextColor.RED));
+            return true;
+        }
+
+        return switch (args[1].toLowerCase()) {
+            case "list" -> handleKitList(sender, autoKit);
+            case "create" -> handleKitCreate(sender, args, autoKit);
+            case "edit" -> handleKitEdit(sender, args, autoKit);
+            default -> {
+                sender.sendMessage(Component.text("Usage: /duteam kit <list|create|edit> ...", NamedTextColor.RED));
+                yield true;
+            }
+        };
+    }
+
+    private boolean handleKitList(CommandSender sender, AutoKitIntegration autoKit) {
+        List<String> kits = autoKit.listKits();
+        if (kits.isEmpty()) {
+            sender.sendMessage(Component.text("No AutoKit kits found.", NamedTextColor.YELLOW));
+            return true;
+        }
+
+        sender.sendMessage(Component.text("=== AutoKit Kits ===", NamedTextColor.GOLD));
+        for (String kit : kits) {
+            sender.sendMessage(Component.text("- " + kit, NamedTextColor.AQUA));
+        }
+        return true;
+    }
+
+    private boolean handleKitCreate(CommandSender sender, String[] args, AutoKitIntegration autoKit) {
+        if (args.length < 3) {
+            sender.sendMessage(Component.text("Usage: /duteam kit create <kit-id>", NamedTextColor.RED));
+            return true;
+        }
+
+        String kitId = args[2];
+        if (autoKit.createKit(kitId)) {
+            sender.sendMessage(Component.text("Created AutoKit: " + kitId, NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("Failed to create AutoKit: " + kitId, NamedTextColor.RED));
+        }
+        return true;
+    }
+
+    private boolean handleKitEdit(CommandSender sender, String[] args, AutoKitIntegration autoKit) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Only players can edit kits from their inventory.", NamedTextColor.RED));
+            return true;
+        }
+
+        if (args.length < 3) {
+            sender.sendMessage(Component.text("Usage: /duteam kit edit <kit-id>", NamedTextColor.RED));
+            return true;
+        }
+
+        String kitId = args[2];
+        if (autoKit.saveKitFromPlayer(player, kitId)) {
+            sender.sendMessage(Component.text("Saved your inventory to AutoKit: " + kitId, NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("Failed to save AutoKit: " + kitId, NamedTextColor.RED));
         }
         return true;
     }
@@ -342,6 +415,7 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
 
     private boolean handleReload(CommandSender sender) {
         settingsService.reload();
+        teamManager.refreshFriendlyFire();
         sender.sendMessage(Component.text("Configuration reloaded!", NamedTextColor.GREEN));
         return true;
     }
@@ -362,6 +436,8 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
         sender.sendMessage(Component.text("/duteam setglow <team> <on|off>", NamedTextColor.AQUA).append(Component.text(" - Toggle glow", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/duteam setmaxsize <team> <size>", NamedTextColor.AQUA).append(Component.text(" - Set max size", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/duteam setkit <team> <kit|none>", NamedTextColor.AQUA).append(Component.text(" - Set AutoKit", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/duteam kit <list|create|edit>", NamedTextColor.AQUA).append(Component.text(" - Manage AutoKit kits", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/duteam friendlyfire [on|off]", NamedTextColor.AQUA).append(Component.text(" - Toggle friendly fire", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/duteam gui", NamedTextColor.AQUA).append(Component.text(" - Open admin GUI", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/duteam join <team>", NamedTextColor.AQUA).append(Component.text(" - Join a team", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/duteam leave", NamedTextColor.AQUA).append(Component.text(" - Leave current team", NamedTextColor.GRAY)));
@@ -381,7 +457,7 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             return filter(Arrays.asList("list", "info", "create", "delete", "setcolor", "setglow",
-                "setmaxsize", "setkit", "friendlyfire", "gui", "join", "leave", "kick", "reload", "save"), args[0]);
+                "setmaxsize", "setkit", "kit", "friendlyfire", "gui", "join", "leave", "kick", "reload", "save"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
@@ -394,6 +470,10 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
                     yield filter(COLORS, args[2]);
                 } else if (args.length == 3 && "setglow".equals(args[0].toLowerCase())) {
                     yield filter(Arrays.asList("on", "off"), args[2]);
+                } else if (args.length == 3 && "setkit".equals(args[0].toLowerCase())) {
+                    List<String> kits = new ArrayList<>(plugin.getAutoKitIntegration().listKits());
+                    kits.add("none");
+                    yield filter(kits, args[2]);
                 }
                 yield Collections.emptyList();
             }
@@ -404,6 +484,14 @@ public class TeamCommand implements CommandExecutor, TabExecutor {
                 yield Collections.emptyList();
             }
             case "friendlyfire" -> filter(Arrays.asList("on", "off"), args.length >= 2 ? args[1] : "");
+            case "kit" -> {
+                if (args.length == 2) {
+                    yield filter(Arrays.asList("list", "create", "edit"), args[1]);
+                } else if (args.length == 3 && "edit".equalsIgnoreCase(args[1])) {
+                    yield filter(plugin.getAutoKitIntegration().listKits(), args[2]);
+                }
+                yield Collections.emptyList();
+            }
             default -> Collections.emptyList();
         };
     }

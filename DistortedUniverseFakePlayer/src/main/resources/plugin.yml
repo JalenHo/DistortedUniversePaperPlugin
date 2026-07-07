@@ -4,8 +4,6 @@ main: dev.distorteduniverse.fakeplayer.DistortedUniverseFakePlayerPlugin
 api-version: '26.2'
 description: Fake player NPCs with custom skins, names, wandering AI, and configurable chat responses.
 author: hokay
-depend:
-  - ProtocolLib
 commands:
   dfp:
     description: Manage fake players.

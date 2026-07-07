@@ -33,7 +33,7 @@ public class DistortedUniverseTeamPlugin extends JavaPlugin {
 
         guiManager = new TeamGuiManager(this, teamManager);
 
-        listener = new TeamListener(teamManager);
+        listener = new TeamListener(teamManager, settingsService);
         getServer().getPluginManager().registerEvents(listener, this);
         getServer().getPluginManager().registerEvents(guiManager, this);
 

@@ -34,6 +34,10 @@ public record TeamSettings(
         autokit.writeTo(config.createSection("autokit"));
     }
 
+    public TeamSettings withFriendlyFire(boolean newFriendlyFire) {
+        return new TeamSettings(enabled, newFriendlyFire, glow, defaultColor, defaultMaxSize, autokit);
+    }
+
     private static boolean getBoolean(ConfigurationSection config, String path, boolean fallback) {
         return config.isBoolean(path) ? config.getBoolean(path) : fallback;
     }

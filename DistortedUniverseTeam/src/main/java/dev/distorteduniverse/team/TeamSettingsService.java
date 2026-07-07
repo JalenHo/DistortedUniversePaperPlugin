@@ -29,4 +29,10 @@ public class TeamSettingsService {
     public TeamSettings settings() {
         return settings;
     }
+
+    public void updateSettings(TeamSettings newSettings) {
+        this.settings = newSettings;
+        settings.writeTo(plugin.getConfig());
+        plugin.saveConfig();
+    }
 }

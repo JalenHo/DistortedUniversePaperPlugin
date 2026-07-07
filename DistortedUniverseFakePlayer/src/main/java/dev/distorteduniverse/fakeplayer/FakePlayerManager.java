@@ -1,234 +1,161 @@
 package dev.distorteduniverse.fakeplayer;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.EnumWrappers;
-import com.comphenix.protocol.wrappers.PlayerInfoData;
-import com.comphenix.protocol.wrappers.WrappedChatComponent;
-import com.comphenix.protocol.wrappers.WrappedGameProfile;
-import com.comphenix.protocol.wrappers.WrappedSignedProperty;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.Mannequin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
 public class FakePlayerManager {
-    private final ProtocolManager protocolManager;
+    private final JavaPlugin plugin;
     private final FakePlayerSkinLoader skinLoader;
     private final FakePlayerStore store;
+    private FakePlayerSettings.BehaviorSettings behavior;
+    private final Map<UUID, UUID> fakeToEntity = new HashMap<>();
     private final Set<UUID> spawnedEntities = new HashSet<>();
-    private final Map<UUID, Integer> entityIds = new HashMap<>();
-    private int nextEntityId = 1;
 
-    public FakePlayerManager(ProtocolManager protocolManager, FakePlayerSkinLoader skinLoader, FakePlayerStore store) {
-        this.protocolManager = protocolManager;
+    public FakePlayerManager(
+        JavaPlugin plugin,
+        FakePlayerSkinLoader skinLoader,
+        FakePlayerStore store,
+        FakePlayerSettings.BehaviorSettings behavior
+    ) {
+        this.plugin = plugin;
         this.skinLoader = skinLoader;
         this.store = store;
+        this.behavior = behavior;
     }
 
     public boolean spawnFakePlayer(FakePlayer fakePlayer) {
         UUID uuid = fakePlayer.uuid();
-
         if (spawnedEntities.contains(uuid)) {
             return false;
         }
 
-        int entityId = nextEntityId++;
-        entityIds.put(uuid, entityId);
-
-        Optional<WrappedSignedProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
-        if (skinProperty.isEmpty()) {
-            skinProperty = skinLoader.getSkin("default");
+        Location location = fakePlayer.location();
+        World world = location.getWorld();
+        if (world == null) {
+            return false;
         }
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            skinProperty.ifPresent(skin -> sendPlayerInfoPacket(player, fakePlayer, skin));
-            sendSpawnEntityPacket(player, entityId, fakePlayer);
-            sendEntityMetadataPacket(player, entityId, fakePlayer);
-        }
+        Mannequin mannequin = (Mannequin) world.spawnEntity(location, EntityType.MANNEQUIN);
+        applyAppearance(mannequin, fakePlayer);
+        configureBehavior(mannequin);
 
+        fakeToEntity.put(uuid, mannequin.getUniqueId());
         spawnedEntities.add(uuid);
         return true;
     }
 
     public boolean despawnFakePlayer(UUID uuid) {
-        if (!spawnedEntities.contains(uuid)) {
+        spawnedEntities.remove(uuid);
+        UUID entityUuid = fakeToEntity.remove(uuid);
+        if (entityUuid == null) {
             return false;
         }
 
-        int entityId = entityIds.remove(uuid);
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            sendPlayerInfoRemovePacket(player, uuid);
-            sendRemoveEntityPacket(player, entityId);
+        Entity entity = Bukkit.getEntity(entityUuid);
+        if (entity != null) {
+            entity.remove();
         }
-
-        spawnedEntities.remove(uuid);
         return true;
     }
 
     public void teleportFakePlayer(UUID uuid, Location newLocation) {
-        if (!spawnedEntities.contains(uuid)) {
-            return;
-        }
-
-        Integer entityId = entityIds.get(uuid);
-        if (entityId == null) {
-            return;
-        }
-
-        store.get(uuid.toString()).ifPresent(fp -> {
-            FakePlayer updated = fp.withLocation(newLocation);
-            store.update(uuid.toString(), updated);
-
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                sendEntityTeleportPacket(player, entityId, newLocation);
-            }
+        getEntity(uuid).ifPresent(entity -> {
+            entity.teleport(newLocation);
+            store.findKeyByUuid(uuid).ifPresent(key ->
+                store.get(key).ifPresent(fp -> store.update(key, fp.withLocation(newLocation)))
+            );
         });
     }
 
     public void updateSkin(UUID uuid, String skinName) {
-        if (!spawnedEntities.contains(uuid)) {
-            return;
-        }
+        getEntity(uuid).ifPresent(entity -> {
+            if (!(entity instanceof Mannequin mannequin)) {
+                return;
+            }
 
-        store.get(uuid.toString()).ifPresent(fp -> {
-            FakePlayer updated = fp.withSkin(skinName);
-            store.update(uuid.toString(), updated);
-
-            Optional<WrappedSignedProperty> skinProperty = skinLoader.getSkin(skinName);
-            skinProperty.ifPresent(prop -> {
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    sendPlayerInfoRemovePacket(player, uuid);
-                    sendPlayerInfoPacket(player, updated, prop);
-                }
-            });
+            store.findKeyByUuid(uuid).ifPresent(key ->
+                store.get(key).ifPresent(fp -> {
+                    FakePlayer updated = fp.withSkin(skinName);
+                    store.update(key, updated);
+                    applyAppearance(mannequin, updated);
+                })
+            );
         });
     }
 
-    public void onPlayerJoin(Player player) {
-        for (FakePlayer fakePlayer : store.getAll()) {
-            if (!spawnedEntities.contains(fakePlayer.uuid())) {
-                continue;
-            }
-
-            int entityId = entityIds.get(fakePlayer.uuid());
-            Optional<WrappedSignedProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
-            skinProperty.or(() -> skinLoader.getSkin("default")).ifPresent(prop -> {
-                sendPlayerInfoPacket(player, fakePlayer, prop);
-                sendSpawnEntityPacket(player, entityId, fakePlayer);
-                sendEntityMetadataPacket(player, entityId, fakePlayer);
-            });
+    public Optional<Entity> getEntity(UUID fakePlayerUuid) {
+        UUID entityUuid = fakeToEntity.get(fakePlayerUuid);
+        if (entityUuid == null) {
+            return Optional.empty();
         }
+
+        Entity entity = Bukkit.getEntity(entityUuid);
+        if (entity == null || !entity.isValid()) {
+            fakeToEntity.remove(fakePlayerUuid);
+            spawnedEntities.remove(fakePlayerUuid);
+            return Optional.empty();
+        }
+        return Optional.of(entity);
     }
 
-    private void sendPlayerInfoPacket(Player receiver, FakePlayer fakePlayer, WrappedSignedProperty skin) {
-        WrappedGameProfile profile = new WrappedGameProfile(fakePlayer.uuid(), fakePlayer.name());
-        profile.getProperties().put("textures", skin);
+    private void applyAppearance(Mannequin mannequin, FakePlayer fakePlayer) {
+        mannequin.customName(Component.text(fakePlayer.name()));
+        mannequin.setCustomNameVisible(true);
 
-        PlayerInfoData data = new PlayerInfoData(
-            fakePlayer.uuid(),
-            0,
-            true,
-            EnumWrappers.NativeGameMode.SURVIVAL,
-            profile,
-            WrappedChatComponent.fromText(fakePlayer.name())
-        );
-
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.PLAYER_INFO);
-        packet.getPlayerInfoActions().write(0, EnumSet.of(
-            EnumWrappers.PlayerInfoAction.ADD_PLAYER,
-            EnumWrappers.PlayerInfoAction.UPDATE_LISTED
-        ));
-        // Since 1.19.3, actions and entry lists share field indices in ProtocolLib; use index 1 for data.
-        packet.getPlayerInfoDataLists().write(1, List.of(data));
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send player info packet", e);
+        Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
+        if (skinProperty.isEmpty()) {
+            skinProperty = skinLoader.getSkin("default");
         }
+
+        PlayerProfile profile = skinLoader.createProfile(fakePlayer.uuid(), fakePlayer.name(), skinProperty.orElse(null));
+        mannequin.setProfile(ResolvableProfile.resolvableProfile(profile));
     }
 
-    private void sendPlayerInfoRemovePacket(Player receiver, UUID uuid) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.PLAYER_INFO_REMOVE);
-        packet.getUUIDLists().write(0, List.of(uuid));
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send player info remove packet", e);
-        }
-    }
-
-    private void sendSpawnEntityPacket(Player receiver, int entityId, FakePlayer fakePlayer) {
-        Location location = fakePlayer.location();
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.SPAWN_ENTITY);
-        packet.getIntegers().write(0, entityId);
-        packet.getUUIDs().write(0, fakePlayer.uuid());
-        packet.getEntityTypeModifier().write(0, EntityType.PLAYER);
-        packet.getDoubles()
-            .write(0, location.getX())
-            .write(1, location.getY())
-            .write(2, location.getZ());
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send spawn entity packet", e);
-        }
-    }
-
-    private void sendRemoveEntityPacket(Player receiver, int entityId) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_DESTROY);
-        packet.getIntegers().write(0, entityId);
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send entity destroy packet", e);
-        }
-    }
-
-    private void sendEntityTeleportPacket(Player receiver, int entityId, Location location) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_TELEPORT);
-        packet.getIntegers().write(0, entityId);
-        packet.getDoubles().write(0, location.getX());
-        packet.getDoubles().write(1, location.getY());
-        packet.getDoubles().write(2, location.getZ());
-        packet.getBytes().write(0, (byte) ((location.getYaw() * 256.0f) / 360.0f));
-        packet.getBytes().write(1, (byte) ((location.getPitch() * 256.0f) / 360.0f));
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send teleport packet", e);
-        }
-    }
-
-    private void sendEntityMetadataPacket(Player receiver, int entityId, FakePlayer fakePlayer) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_METADATA);
-        packet.getIntegers().write(0, entityId);
-
-        try {
-            protocolManager.sendServerPacket(receiver, packet);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send entity metadata packet", e);
-        }
+    private void configureBehavior(Mannequin mannequin) {
+        mannequin.setGravity(behavior.gravity());
+        mannequin.setImmovable(behavior.immovable());
+        mannequin.setInvulnerable(behavior.invulnerable());
     }
 
     public boolean isSpawned(UUID uuid) {
-        return spawnedEntities.contains(uuid);
+        return spawnedEntities.contains(uuid) && getEntity(uuid).isPresent();
     }
 
     public Collection<UUID> getSpawnedUuids() {
-        return Collections.unmodifiableCollection(spawnedEntities);
+        return Collections.unmodifiableCollection(new HashSet<>(spawnedEntities));
     }
 
-    public int getEntityId(UUID uuid) {
-        return entityIds.getOrDefault(uuid, -1);
+    public boolean isManagedEntity(UUID entityUuid) {
+        return fakeToEntity.containsValue(entityUuid);
+    }
+
+    public Optional<UUID> getFakePlayerUuid(UUID entityUuid) {
+        return fakeToEntity.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(entityUuid))
+            .map(Map.Entry::getKey)
+            .findFirst();
+    }
+
+    public void updateBehavior(FakePlayerSettings.BehaviorSettings newBehavior) {
+        this.behavior = newBehavior;
+        for (UUID fakeUuid : new ArrayList<>(spawnedEntities)) {
+            getEntity(fakeUuid).ifPresent(entity -> {
+                if (entity instanceof Mannequin mannequin) {
+                    mannequin.setGravity(newBehavior.gravity());
+                    mannequin.setImmovable(newBehavior.immovable());
+                    mannequin.setInvulnerable(newBehavior.invulnerable());
+                }
+            });
+        }
     }
 }

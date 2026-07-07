@@ -105,4 +105,17 @@ public class FakePlayerStore {
     public boolean contains(String key) {
         return players.containsKey(key);
     }
+
+    public Optional<String> findKeyByUuid(UUID uuid) {
+        for (Map.Entry<String, FakePlayer> entry : players.entrySet()) {
+            if (entry.getValue().uuid().equals(uuid)) {
+                return Optional.of(entry.getKey());
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<FakePlayer> getByUuid(UUID uuid) {
+        return findKeyByUuid(uuid).flatMap(this::get);
+    }
 }

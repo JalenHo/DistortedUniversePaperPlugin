@@ -77,7 +77,7 @@ jobs:
           Requirements:
           - Java ${JAVA_VERSION}
           - Paper ${MINECRAFT_VERSION}
-          - ProtocolLib 5.4.0 or newer for DistortedUniversePlayerDisguise and DistortedUniverseFakePlayer
+          - ProtocolLib 5.4.0 or newer for DistortedUniversePlayerDisguise
 
           Assets:
           - DistortedUniversePlayerEvent

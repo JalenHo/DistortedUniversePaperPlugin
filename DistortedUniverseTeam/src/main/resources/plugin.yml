@@ -4,10 +4,12 @@ main: dev.distorteduniverse.team.DistortedUniverseTeamPlugin
 api-version: '26.2'
 description: Team management with colored glow outlines, GUI, and AutoKit integration.
 author: hokay
+softdepend:
+  - AutoKit
 commands:
   duteam:
     description: Manage teams.
-    usage: /duteam <list|info|create|delete|setcolor|setglow|setmaxsize|setkit|friendlyfire|gui|join|leave|kick|reload|save>
+    usage: /duteam <list|info|create|delete|setcolor|setglow|setmaxsize|setkit|kit|friendlyfire|gui|join|leave|kick|reload|save>
     aliases:
       - dteam
       - duteam

@@ -88,7 +88,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         store.add(key, fakePlayer);
-        plugin.getProtectedEntities().add(uuid);
         store.save();
 
         sender.sendMessage(Component.text("Spawned fake player: " + name, NamedTextColor.GREEN));
@@ -116,7 +115,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         store.add(key, fakePlayer);
-        plugin.getProtectedEntities().add(uuid);
         store.save();
 
         sender.sendMessage(Component.text("Spawned random fake player: " + name, NamedTextColor.GREEN));
@@ -155,9 +153,8 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
                     if (manager.isSpawned(fp.uuid())) {
                         manager.despawnFakePlayer(fp.uuid());
                     }
-                    plugin.getProtectedEntities().remove(fp.uuid());
-                    store.remove(key);
                     wanderingService.stopWandering(fp.uuid());
+                    store.remove(key);
                 });
                 count++;
             }
@@ -176,7 +173,6 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         if (manager.isSpawned(fp.uuid())) {
             manager.despawnFakePlayer(fp.uuid());
         }
-        plugin.getProtectedEntities().remove(fp.uuid());
         wanderingService.stopWandering(fp.uuid());
         store.remove(target);
         store.save();
@@ -274,12 +270,14 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
                 try {
                     double radius = Double.parseDouble(args[2]);
                     wanderingService.startWanderingAll(radius);
+                    store.save();
                     sender.sendMessage(Component.text("Started wandering all fake players with radius " + radius, NamedTextColor.GREEN));
                 } catch (NumberFormatException e) {
                     sender.sendMessage(Component.text("Invalid radius", NamedTextColor.RED));
                 }
             } else {
                 wanderingService.startWanderingAll(settingsService.settings().wandering().defaultRadius());
+                store.save();
                 sender.sendMessage(Component.text("Started wandering all fake players", NamedTextColor.GREEN));
             }
             return true;
@@ -293,6 +291,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
 
         FakePlayer fp = optPlayer.get();
         wanderingService.startWandering(target, fp);
+        store.save();
         sender.sendMessage(Component.text("Started wandering for " + fp.name(), NamedTextColor.GREEN));
         return true;
     }
@@ -323,7 +322,10 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
 
     private boolean handleReload(CommandSender sender) {
         settingsService.reload();
-        skinLoader.load(settingsService.settings().skins());
+        FakePlayerSettings settings = settingsService.settings();
+        skinLoader.load(settings.skins());
+        manager.updateBehavior(settings.behavior());
+        wanderingService.updateSettings(settings.wandering());
         sender.sendMessage(Component.text("Configuration reloaded!", NamedTextColor.GREEN));
         return true;
     }
@@ -367,6 +369,9 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         sender.sendMessage(Component.text("Wandering Radius: " + settings.wandering().defaultRadius(), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Tick Interval: " + settings.wandering().tickInterval(), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Use Pathfinding: " + settings.wandering().usePathfinding(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Invulnerable: " + settings.behavior().invulnerable(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Gravity: " + settings.behavior().gravity(), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Immovable: " + settings.behavior().immovable(), NamedTextColor.GRAY));
         return true;
     }
 

@@ -163,9 +163,7 @@ public class TeamManager {
             .append(Component.text("] ", NamedTextColor.BLACK)));
 
         TeamSettings settings = plugin.getSettingsService().settings();
-        if (!settings.friendlyFire()) {
-            scoreboardTeam.setAllowFriendlyFire(false);
-        }
+        scoreboardTeam.setAllowFriendlyFire(settings.friendlyFire());
 
         for (UUID member : team.members()) {
             Player player = Bukkit.getPlayer(member);
@@ -245,5 +243,15 @@ public class TeamManager {
 
     public void onPlayerQuit(Player player) {
         playerStore.save();
+    }
+
+    public void refreshFriendlyFire() {
+        boolean allow = plugin.getSettingsService().settings().friendlyFire();
+        for (Team team : teamStore.getAll()) {
+            org.bukkit.scoreboard.Team scoreboardTeam = mainScoreboard.getTeam("duteam_" + team.id());
+            if (scoreboardTeam != null) {
+                scoreboardTeam.setAllowFriendlyFire(allow);
+            }
+        }
     }
 }
