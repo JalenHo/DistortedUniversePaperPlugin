@@ -34,8 +34,8 @@ class DeathMessageRewriteTest {
         Component bothRewritten = replaceName(victimRewritten, "nessie2g", "Herobrine");
 
         TranslatableComponent out = (TranslatableComponent) bothRewritten;
-        assertEquals("Notch", PLAIN.serialize(out.args().get(0)));
-        assertEquals("Herobrine", PLAIN.serialize(out.args().get(1)));
+        assertEquals("Notch", PLAIN.serialize((Component) out.arguments().get(0).value()));
+        assertEquals("Herobrine", PLAIN.serialize((Component) out.arguments().get(1).value()));
     }
 
     @Test

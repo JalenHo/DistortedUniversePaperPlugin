@@ -3,13 +3,15 @@ package dev.distorteduniverse.fakeplayer;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.EnumWrappers;
+import com.comphenix.protocol.wrappers.PlayerInfoData;
+import com.comphenix.protocol.wrappers.WrappedChatComponent;
+import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import com.comphenix.protocol.wrappers.WrappedSignedProperty;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.util.Vector;
 
 import java.util.*;
 
@@ -29,7 +31,6 @@ public class FakePlayerManager {
 
     public boolean spawnFakePlayer(FakePlayer fakePlayer) {
         UUID uuid = fakePlayer.uuid();
-        Location loc = fakePlayer.location();
 
         if (spawnedEntities.contains(uuid)) {
             return false;
@@ -44,8 +45,8 @@ public class FakePlayerManager {
         }
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            sendPlayerInfoPacket(player, fakePlayer, skinProperty.get(), true);
-            sendAddPlayerPacket(player, entityId, fakePlayer);
+            skinProperty.ifPresent(skin -> sendPlayerInfoPacket(player, fakePlayer, skin));
+            sendSpawnEntityPacket(player, entityId, fakePlayer);
             sendEntityMetadataPacket(player, entityId, fakePlayer);
         }
 
@@ -102,7 +103,7 @@ public class FakePlayerManager {
             skinProperty.ifPresent(prop -> {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     sendPlayerInfoRemovePacket(player, uuid);
-                    sendPlayerInfoPacket(player, updated, prop, true);
+                    sendPlayerInfoPacket(player, updated, prop);
                 }
             });
         });
@@ -117,31 +118,32 @@ public class FakePlayerManager {
             int entityId = entityIds.get(fakePlayer.uuid());
             Optional<WrappedSignedProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
             skinProperty.or(() -> skinLoader.getSkin("default")).ifPresent(prop -> {
-                sendPlayerInfoPacket(player, fakePlayer, prop, true);
-                sendAddPlayerPacket(player, entityId, fakePlayer);
+                sendPlayerInfoPacket(player, fakePlayer, prop);
+                sendSpawnEntityPacket(player, entityId, fakePlayer);
                 sendEntityMetadataPacket(player, entityId, fakePlayer);
             });
         }
     }
 
-    private void sendPlayerInfoPacket(Player receiver, FakePlayer fakePlayer, WrappedSignedProperty skin, boolean visible) {
+    private void sendPlayerInfoPacket(Player receiver, FakePlayer fakePlayer, WrappedSignedProperty skin) {
+        WrappedGameProfile profile = new WrappedGameProfile(fakePlayer.uuid(), fakePlayer.name());
+        profile.getProperties().put("textures", skin);
+
+        PlayerInfoData data = new PlayerInfoData(
+            fakePlayer.uuid(),
+            0,
+            true,
+            EnumWrappers.NativeGameMode.SURVIVAL,
+            profile,
+            WrappedChatComponent.fromText(fakePlayer.name())
+        );
+
         PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.PLAYER_INFO);
-
-        packet.getPlayerInfoAction().write(0, visible ?
-            com.comphenix.protocol.PacketType.Play.Server.PlayerInfo.Action.ADD_PLAYER :
-            com.comphenix.protocol.PacketType.Play.Server.PlayerInfo.Action.REMOVE_PLAYER);
-
-        packet.getPlayerInfoDataLists().write(0, List.of(
-            new com.comphenix.protocol.wrappers.PlayerInfoData(
-                packet.getUUIDs().getSerializer().createSingle(uuid -> fakePlayer.uuid()),
-                0,
-                com.comphenix.protocol.wrappers.EnumWrappers.NativeGameMode.NOT_SET,
-                visible ? 0 : -1,
-                fakePlayer.name(),
-                LegacyComponentSerializer.legacyAmpersand().deserialize(fakePlayer.name()),
-                skin
-            )
+        packet.getPlayerInfoActions().write(0, EnumSet.of(
+            EnumWrappers.PlayerInfoAction.ADD_PLAYER,
+            EnumWrappers.PlayerInfoAction.UPDATE_LISTED
         ));
+        packet.getPlayerInfoDataLists().write(0, List.of(data));
 
         try {
             protocolManager.sendServerPacket(receiver, packet);
@@ -151,12 +153,8 @@ public class FakePlayerManager {
     }
 
     private void sendPlayerInfoRemovePacket(Player receiver, UUID uuid) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.PLAYER_INFO);
-        packet.getPlayerInfoAction().write(0,
-            com.comphenix.protocol.PacketType.Play.Server.PlayerInfo.Action.REMOVE_PLAYER);
-
-        packet.getUUIDs().write(0, uuid);
-        packet.getPlayerInfoDataLists().write(0, Collections.emptyList());
+        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.PLAYER_INFO_REMOVE);
+        packet.getUUIDLists().write(0, List.of(uuid));
 
         try {
             protocolManager.sendServerPacket(receiver, packet);
@@ -165,17 +163,21 @@ public class FakePlayerManager {
         }
     }
 
-    private void sendAddPlayerPacket(Player receiver, int entityId, FakePlayer fakePlayer) {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ADD_PLAYER);
+    private void sendSpawnEntityPacket(Player receiver, int entityId, FakePlayer fakePlayer) {
+        Location location = fakePlayer.location();
+        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.SPAWN_ENTITY);
         packet.getIntegers().write(0, entityId);
         packet.getUUIDs().write(0, fakePlayer.uuid());
-        packet.getEntityUseActions().write(0, fakePlayer.location().getPosition().toVector().subtract(new Vector(0, 1.62, 0)));
-        packet.getFloat().write(0, 0.0f);
+        packet.getEntityTypeModifier().write(0, EntityType.PLAYER);
+        packet.getDoubles()
+            .write(0, location.getX())
+            .write(1, location.getY())
+            .write(2, location.getZ());
 
         try {
             protocolManager.sendServerPacket(receiver, packet);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send add player packet", e);
+            throw new RuntimeException("Failed to send spawn entity packet", e);
         }
     }
 

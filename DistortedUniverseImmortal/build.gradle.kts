@@ -5,23 +5,26 @@ plugins {
 group = "dev.distorteduniverse"
 version = "0.9.2"
 
+val paperApiVersion: String by rootProject.extra
+val javaVersion: Int by rootProject.extra
+
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2-R0.1-SNAPSHOT")
-    testImplementation("io.papermc.paper:paper-api:26.2-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
+    testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
 
 tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
-        options.release.set(21)
+        options.release.set(javaVersion)
     }
 
     processResources {
