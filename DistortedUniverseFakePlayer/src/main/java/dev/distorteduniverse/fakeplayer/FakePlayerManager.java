@@ -2,7 +2,6 @@ package dev.distorteduniverse.fakeplayer;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -77,20 +76,10 @@ public class FakePlayerManager {
         });
     }
 
-    public void updateSkin(UUID uuid, String skinName) {
-        getEntity(uuid).ifPresent(entity -> {
-            if (!(entity instanceof Mannequin mannequin)) {
-                return;
-            }
-
-            store.findKeyByUuid(uuid).ifPresent(key ->
-                store.get(key).ifPresent(fp -> {
-                    FakePlayer updated = fp.withSkin(skinName);
-                    store.update(key, updated);
-                    applyAppearance(mannequin, updated);
-                })
-            );
-        });
+    public Optional<Mannequin> getMannequin(UUID fakePlayerUuid) {
+        return getEntity(fakePlayerUuid)
+            .filter(entity -> entity instanceof Mannequin)
+            .map(entity -> (Mannequin) entity);
     }
 
     public Optional<Entity> getEntity(UUID fakePlayerUuid) {
@@ -109,8 +98,9 @@ public class FakePlayerManager {
     }
 
     private void applyAppearance(Mannequin mannequin, FakePlayer fakePlayer) {
-        mannequin.customName(Component.text(fakePlayer.name()));
-        mannequin.setCustomNameVisible(true);
+        mannequin.customName(null);
+        mannequin.setCustomNameVisible(false);
+        mannequin.setDescription(null);
 
         Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
         if (skinProperty.isEmpty()) {
@@ -119,6 +109,12 @@ public class FakePlayerManager {
 
         PlayerProfile profile = skinLoader.createProfile(fakePlayer.uuid(), fakePlayer.name(), skinProperty.orElse(null));
         mannequin.setProfile(ResolvableProfile.resolvableProfile(profile));
+    }
+
+    public void setMovementActive(UUID uuid, boolean active) {
+        getMannequin(uuid).ifPresent(mannequin ->
+            mannequin.setImmovable(active ? false : behavior.immovable())
+        );
     }
 
     private void configureBehavior(Mannequin mannequin) {

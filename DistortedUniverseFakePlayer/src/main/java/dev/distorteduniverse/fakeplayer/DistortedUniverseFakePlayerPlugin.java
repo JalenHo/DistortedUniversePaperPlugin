@@ -1,6 +1,5 @@
 package dev.distorteduniverse.fakeplayer;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
@@ -11,7 +10,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerSkinLoader skinLoader;
     private FakePlayerStore store;
     private FakePlayerManager manager;
-    private WanderingService wanderingService;
+    private BotMovementService movementService;
     private FakePlayerListener listener;
 
     @Override
@@ -32,11 +31,11 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             settingsService.settings().behavior()
         );
 
-        wanderingService = new WanderingService(
+        movementService = new BotMovementService(
             this,
             manager,
             store,
-            settingsService.settings().wandering()
+            settingsService.settings().movement()
         );
 
         listener = new FakePlayerListener(manager, settingsService);
@@ -60,8 +59,8 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             store.save();
         }
 
-        if (wanderingService != null) {
-            wanderingService.stopAllWandering();
+        if (movementService != null) {
+            movementService.stopAll();
         }
 
         getLogger().info("DistortedUniverseFakePlayer disabled!");
@@ -83,7 +82,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             FakePlayer fp = opt.get();
             if (manager.spawnFakePlayer(fp)) {
                 if (fp.isWandering()) {
-                    wanderingService.startWandering(key, fp);
+                    movementService.startWandering(key, fp, settings.movement().wanderRadius());
                 }
                 spawned++;
             }
@@ -107,7 +106,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         return manager;
     }
 
-    public WanderingService getWanderingService() {
-        return wanderingService;
+    public BotMovementService getMovementService() {
+        return movementService;
     }
 }
