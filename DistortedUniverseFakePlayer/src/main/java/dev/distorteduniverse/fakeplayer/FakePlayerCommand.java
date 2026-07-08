@@ -130,6 +130,14 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
     }
 
     private boolean handleList(CommandSender sender) {
+        int orphaned = manager.cleanupOrphanedFakePlayers();
+        if (orphaned > 0) {
+            sender.sendMessage(Component.text(
+                "Cleaned up " + orphaned + " orphaned fake player entr" + (orphaned == 1 ? "y" : "ies"),
+                NamedTextColor.YELLOW
+            ));
+        }
+
         Collection<FakePlayer> players = store.getAll();
 
         if (players.isEmpty()) {

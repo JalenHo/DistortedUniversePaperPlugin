@@ -67,6 +67,11 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         getCommand("dfp").setExecutor(command);
         getCommand("dfp").setTabCompleter(command);
 
+        int orphaned = manager.cleanupOrphanedFakePlayers();
+        if (orphaned > 0) {
+            getLogger().warning("Cleaned up " + orphaned + " orphaned fake player entities during startup.");
+        }
+
         respawnAllFakePlayers();
 
         getLogger().info("DistortedUniverseFakePlayer enabled (NMS fake players).");
