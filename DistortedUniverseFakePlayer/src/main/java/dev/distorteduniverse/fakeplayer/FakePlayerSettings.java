@@ -22,7 +22,7 @@ public record FakePlayerSettings(
     }
 
     public void writeTo(ConfigurationSection config) {
-        config.set("config-version", 4);
+        config.set("config-version", 5);
         config.set("enabled", enabled);
         movement.writeTo(config.createSection("movement"));
         behavior.writeTo(config.createSection("behavior"));
