@@ -9,7 +9,7 @@ softdepend:
 commands:
   dfp:
     description: Manage fake players.
-    usage: /dfp <spawn|despawn|move|list|reload>
+    usage: /dfp <spawn|despawn|move|list|config|set|reload>
     aliases:
       - dfakeplayer
       - dfp

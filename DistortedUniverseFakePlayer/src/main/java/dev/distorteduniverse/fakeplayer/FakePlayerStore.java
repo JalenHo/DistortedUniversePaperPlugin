@@ -46,8 +46,12 @@ public class FakePlayerStore {
             );
             String skin = playerSection.getString("skin", "default");
             boolean isWandering = playerSection.getBoolean("wandering", false);
+            Boolean invulnerableOverride = null;
+            if (playerSection.isSet("invulnerable")) {
+                invulnerableOverride = playerSection.getBoolean("invulnerable");
+            }
 
-            players.put(key, new FakePlayer(name, uuid, location, skin, isWandering));
+            players.put(key, new FakePlayer(name, uuid, location, skin, isWandering, invulnerableOverride));
         }
     }
 
@@ -69,6 +73,11 @@ public class FakePlayerStore {
             playerSection.set("pitch", player.location().getPitch());
             playerSection.set("skin", player.skin());
             playerSection.set("wandering", player.isWandering());
+            if (player.invulnerableOverride() != null) {
+                playerSection.set("invulnerable", player.invulnerableOverride());
+            } else {
+                playerSection.set("invulnerable", null);
+            }
         }
 
         try {

@@ -94,17 +94,26 @@ public final class NmsFakePlayerSpawner {
         try {
             ServerPlayer serverPlayer = ((org.bukkit.craftbukkit.entity.CraftPlayer) player).getHandle();
             MinecraftServer minecraftServer = ((CraftServer) Bukkit.getServer()).getServer();
+            // remove() handles both living and dead players in the player list.
             minecraftServer.getPlayerList().remove(serverPlayer);
+        } catch (Throwable throwable) {
+            logger.log(Level.WARNING, "Failed to remove NMS fake player " + player.getName() + " from player list", throwable);
+        }
+
+        try {
+            if (player.isOnline()) {
+                player.kick();
+            }
+        } catch (Throwable throwable) {
+            logger.log(Level.FINE, "Kick fallback failed for fake player " + player.getName(), throwable);
+        }
+
+        try {
             if (player.isValid()) {
                 player.remove();
             }
         } catch (Throwable throwable) {
-            logger.log(Level.WARNING, "Failed to remove NMS fake player " + player.getName() + ", using kick fallback", throwable);
-            if (player.isOnline()) {
-                player.kick();
-            } else if (player.isValid()) {
-                player.remove();
-            }
+            logger.log(Level.WARNING, "Failed to remove fake player entity " + player.getName(), throwable);
         }
     }
 }
