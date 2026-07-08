@@ -5,10 +5,12 @@ import dev.distorteduniverse.fakeplayer.SkinProperty;
 import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.players.PlayerList;
 import org.bukkit.Bukkit;
@@ -59,8 +61,14 @@ public final class NmsFakePlayerSpawner {
             serverPlayer.setYRot(location.getYaw());
             serverPlayer.setXRot(location.getPitch());
 
-            FakeConnection connection = new FakeConnection(InetAddress.getLoopbackAddress());
-            CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
+            Connection connection = new FakeConnection(InetAddress.getLoopbackAddress());
+            CommonListenerCookie cookie = new CommonListenerCookie(profile, 0, clientInformation, false);
+            serverPlayer.connection = new ServerGamePacketListenerImpl(
+                minecraftServer,
+                connection,
+                serverPlayer,
+                cookie
+            );
             PlayerList playerList = minecraftServer.getPlayerList();
             playerList.placeNewPlayer(connection, serverPlayer, cookie);
 
@@ -68,9 +76,12 @@ public final class NmsFakePlayerSpawner {
             player.teleport(location);
             player.setGameMode(GameMode.SURVIVAL);
             return player;
+        } catch (LinkageError error) {
+            logger.log(Level.SEVERE, "NMS fake player spawner is incompatible with this server build.", error);
+            available = false;
+            return null;
         } catch (Throwable throwable) {
             logger.log(Level.WARNING, "Failed to spawn NMS fake player " + name, throwable);
-            available = false;
             return null;
         }
     }
