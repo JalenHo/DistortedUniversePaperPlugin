@@ -22,6 +22,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
     private final FakePlayerStore store;
     private final FakePlayerManager manager;
     private final BotMovementService movementService;
+    private final FakePlayerLifecycleService lifecycleService;
 
     public FakePlayerCommand(DistortedUniverseFakePlayerPlugin plugin) {
         this.plugin = plugin;
@@ -29,6 +30,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         this.store = plugin.getStore();
         this.manager = plugin.getManager();
         this.movementService = plugin.getMovementService();
+        this.lifecycleService = plugin.getLifecycleService();
     }
 
     @Override
@@ -58,8 +60,8 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         }
 
         String name = args[1];
-        String key = name.toLowerCase();
-        if (store.get(key).isPresent()) {
+        String key = name.toLowerCase(Locale.ROOT);
+        if (store.get(key).isPresent() || store.findKey(name).isPresent()) {
             sender.sendMessage(Component.text("Fake player already exists: " + name, NamedTextColor.RED));
             return true;
         }
@@ -70,7 +72,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         UUID uuid = UUID.randomUUID();
         FakePlayer fakePlayer = new FakePlayer(name, uuid, manager.snapSpawnLocation(spawnLoc), settings.skins().defaultSkin(), false);
 
-        if (!trySpawnFakePlayer(sender, fakePlayer)) {
+        if (!trySpawnFakePlayer(sender, key, fakePlayer)) {
             return true;
         }
 
@@ -81,9 +83,9 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         return true;
     }
 
-    private boolean trySpawnFakePlayer(CommandSender sender, FakePlayer fakePlayer) {
+    private boolean trySpawnFakePlayer(CommandSender sender, String key, FakePlayer fakePlayer) {
         try {
-            if (!manager.spawnFakePlayer(fakePlayer)) {
+            if (!lifecycleService.spawn(key, fakePlayer)) {
                 sender.sendMessage(Component.text("Failed to spawn fake player: " + fakePlayer.name(), NamedTextColor.RED));
                 return false;
             }
@@ -104,40 +106,26 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             return true;
         }
 
-        String target = args[1].toLowerCase();
+        String target = args[1];
 
-        if ("all".equals(target)) {
+        if ("all".equalsIgnoreCase(target)) {
             int count = 0;
             for (String key : new ArrayList<>(store.getKeys())) {
-                store.get(key).ifPresent(fp -> {
-                    if (manager.isSpawned(fp.uuid())) {
-                        manager.despawnFakePlayer(fp.uuid());
-                    }
-                    movementService.stop(fp.uuid());
-                    store.remove(key);
-                });
-                count++;
+                if (lifecycleService.remove(key, FakePlayerLifecycleService.RemovalReason.DESPAWN).isPresent()) {
+                    count++;
+                }
             }
-            store.save();
             sender.sendMessage(Component.text("Despawned " + count + " fake players", NamedTextColor.GREEN));
             return true;
         }
 
-        Optional<FakePlayer> optPlayer = store.get(target);
-        if (optPlayer.isEmpty()) {
+        Optional<FakePlayer> removed = lifecycleService.remove(target, FakePlayerLifecycleService.RemovalReason.DESPAWN);
+        if (removed.isEmpty()) {
             sender.sendMessage(Component.text("Fake player not found: " + target, NamedTextColor.RED));
             return true;
         }
 
-        FakePlayer fp = optPlayer.get();
-        if (manager.isSpawned(fp.uuid())) {
-            manager.despawnFakePlayer(fp.uuid());
-        }
-        movementService.stop(fp.uuid());
-        store.remove(target);
-        store.save();
-
-        sender.sendMessage(Component.text("Despawned fake player: " + fp.name(), NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Despawned fake player: " + removed.get().name(), NamedTextColor.GREEN));
         return true;
     }
 
@@ -172,10 +160,15 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             return true;
         }
 
-        String target = args[1].toLowerCase();
-        Optional<FakePlayer> optPlayer = store.get(target);
+        Optional<String> key = store.findKey(args[1]);
+        if (key.isEmpty()) {
+            sender.sendMessage(Component.text("Fake player not found: " + args[1], NamedTextColor.RED));
+            return true;
+        }
+
+        Optional<FakePlayer> optPlayer = store.get(key.get());
         if (optPlayer.isEmpty()) {
-            sender.sendMessage(Component.text("Fake player not found: " + target, NamedTextColor.RED));
+            sender.sendMessage(Component.text("Fake player not found: " + args[1], NamedTextColor.RED));
             return true;
         }
 
@@ -185,7 +178,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             return true;
         }
 
-        String action = args[2].toLowerCase();
+        String action = args[2].toLowerCase(Locale.ROOT);
         if ("stop".equals(action)) {
             movementService.stop(fp.uuid());
             store.save();
@@ -204,7 +197,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
                 }
             }
 
-            movementService.startWandering(target, fp, radius);
+            movementService.startWandering(key.get(), fp, radius);
             store.save();
             sender.sendMessage(Component.text("Started wandering for " + fp.name() + " (radius " + radius + ")", NamedTextColor.GREEN));
             return true;
@@ -220,7 +213,7 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             double y = Double.parseDouble(args[3]);
             double z = Double.parseDouble(args[4]);
             Location destination = new Location(fp.location().getWorld(), x, y, z);
-            movementService.startMoveTo(target, fp, destination);
+            movementService.startMoveTo(key.get(), fp, destination);
             store.save();
             sender.sendMessage(Component.text(
                 "Moving " + fp.name() + " to " + formatLocation(destination),
@@ -269,11 +262,11 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
             return filter(Arrays.asList("spawn", "despawn", "remove", "list", "move", "reload"), args[0]);
         }
 
-        return switch (args[0].toLowerCase()) {
+        return switch (args[0].toLowerCase(Locale.ROOT)) {
             case "despawn", "remove", "move" -> {
                 if (args.length == 2) {
                     yield filter(store.getKeys().stream().toList(), args[1]);
-                } else if (args.length == 3 && "move".equals(args[0].toLowerCase())) {
+                } else if (args.length == 3 && "move".equalsIgnoreCase(args[0])) {
                     yield filter(Arrays.asList("wander", "stop"), args[2]);
                 }
                 yield Collections.emptyList();
@@ -283,9 +276,9 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
     }
 
     private List<String> filter(List<String> options, String prefix) {
-        String lower = prefix.toLowerCase();
+        String lower = prefix.toLowerCase(Locale.ROOT);
         return options.stream()
-            .filter(s -> s.toLowerCase().startsWith(lower))
+            .filter(s -> s.toLowerCase(Locale.ROOT).startsWith(lower))
             .sorted()
             .collect(Collectors.toList());
     }

@@ -1,9 +1,10 @@
 # DistortedUniverseFakePlayer
 
-Server-side fake player bots using Paper Mannequin entities. Bots look like normal players (no extra nametags) and can walk around via commands.
+Server-side fake player bots using Paper Mannequin entities. Bots look like normal players and can walk around via commands.
 
 ## Features
 
+- **Join/Leave Messages**: Broadcasts join/leave/death messages (integrates with DistortedUniversePlayerEvent when installed)
 - **Spawn / Despawn**: Create and remove fake players at your location
 - **Command Walking**: Wander nearby or walk to coordinates
 - **Default Skin**: Uses `skins/default.json` for player appearance
@@ -24,7 +25,7 @@ Server-side fake player bots using Paper Mannequin entities. Bots look like norm
 ## Configuration
 
 ```yaml
-config-version: 2
+config-version: 3
 enabled: true
 
 movement:
@@ -34,9 +35,21 @@ movement:
   wander-radius: 10
 
 behavior:
-  invulnerable: false
+  invulnerable: true
+  knockback-when-invulnerable: true
   gravity: true
   immovable: false
+
+messages:
+  use-player-event-settings: true
+  join:
+    enabled: true
+    radius: 64.0
+    template: "<yellow><player_name> joined the game</yellow>"
+  leave:
+    enabled: true
+    radius: 64.0
+    template: "<yellow><player_name> left the game</yellow>"
 
 skins:
   folder: "skins"

@@ -4,6 +4,8 @@ main: dev.distorteduniverse.fakeplayer.DistortedUniverseFakePlayerPlugin
 api-version: '26.2'
 description: Fake player bots with spawn, despawn, and command-driven walking.
 author: hokay
+softdepend:
+  - DistortedUniversePlayerEvent
 commands:
   dfp:
     description: Manage fake players.
