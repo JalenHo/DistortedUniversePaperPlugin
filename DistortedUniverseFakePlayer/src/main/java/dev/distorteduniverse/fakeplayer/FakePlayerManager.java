@@ -1,5 +1,6 @@
 package dev.distorteduniverse.fakeplayer;
 
+import net.kyori.adventure.text.Component;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import org.bukkit.Location;
@@ -107,8 +108,8 @@ public class FakePlayerManager {
     }
 
     private void applyAppearance(Mannequin mannequin, FakePlayer fakePlayer) {
-        mannequin.customName(null);
-        mannequin.setCustomNameVisible(false);
+        mannequin.customName(Component.text(fakePlayer.name()));
+        mannequin.setCustomNameVisible(true);
         mannequin.setDescription(null);
 
         Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());

@@ -115,6 +115,29 @@ public class FakePlayerStore {
         return Optional.empty();
     }
 
+    public Optional<String> findKey(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+
+        if (players.containsKey(identifier)) {
+            return Optional.of(identifier);
+        }
+
+        String lower = identifier.toLowerCase(Locale.ROOT);
+        if (players.containsKey(lower)) {
+            return Optional.of(lower);
+        }
+
+        for (Map.Entry<String, FakePlayer> entry : players.entrySet()) {
+            if (entry.getValue().name().equalsIgnoreCase(identifier)) {
+                return Optional.of(entry.getKey());
+            }
+        }
+
+        return Optional.empty();
+    }
+
     public Optional<FakePlayer> getByUuid(UUID uuid) {
         return findKeyByUuid(uuid).flatMap(this::get);
     }
