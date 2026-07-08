@@ -87,7 +87,7 @@ public final class NmsFakePlayerSpawner {
     }
 
     public void remove(Player player) {
-        if (player == null || !player.isOnline()) {
+        if (player == null) {
             return;
         }
 
@@ -95,10 +95,15 @@ public final class NmsFakePlayerSpawner {
             ServerPlayer serverPlayer = ((org.bukkit.craftbukkit.entity.CraftPlayer) player).getHandle();
             MinecraftServer minecraftServer = ((CraftServer) Bukkit.getServer()).getServer();
             minecraftServer.getPlayerList().remove(serverPlayer);
+            if (player.isValid()) {
+                player.remove();
+            }
         } catch (Throwable throwable) {
             logger.log(Level.WARNING, "Failed to remove NMS fake player " + player.getName() + ", using kick fallback", throwable);
             if (player.isOnline()) {
                 player.kick();
+            } else if (player.isValid()) {
+                player.remove();
             }
         }
     }

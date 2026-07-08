@@ -99,6 +99,17 @@ public class FakePlayerManager {
         return true;
     }
 
+    public boolean forceDespawnFakePlayer(UUID uuid) {
+        Player player = activePlayers.remove(uuid);
+        if (player == null) {
+            return false;
+        }
+
+        FakePlayerMarkers.unmark(player);
+        spawner.remove(player);
+        return true;
+    }
+
     public void teleportFakePlayer(UUID uuid, Location newLocation) {
         getPlayer(uuid).ifPresent(player -> {
             player.teleport(newLocation);
@@ -117,6 +128,10 @@ public class FakePlayerManager {
             return Optional.empty();
         }
         return Optional.of(player);
+    }
+
+    public Optional<Player> getTrackedPlayer(UUID fakePlayerUuid) {
+        return Optional.ofNullable(activePlayers.get(fakePlayerUuid));
     }
 
     public Location snapSpawnLocation(Location location) {
