@@ -11,7 +11,6 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerStore store;
     private FakePlayerManager manager;
     private BotMovementService movementService;
-    private FakePlayerLifecycleService lifecycleService;
     private FakePlayerListener listener;
 
     @Override
@@ -38,8 +37,6 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             settingsService.settings().movement()
         );
 
-        lifecycleService = new FakePlayerLifecycleService(this, manager, store);
-
         listener = new FakePlayerListener(this, manager, movementService, settingsService);
         getServer().getPluginManager().registerEvents(listener, this);
 
@@ -48,19 +45,15 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         getCommand("dfp").setTabCompleter(command);
 
         applyRuntimeSettings();
-        lifecycleService.start();
+        movementService.start();
 
         getLogger().info("DistortedUniverseFakePlayer enabled!");
     }
 
     @Override
     public void onDisable() {
-        if (lifecycleService != null) {
-            lifecycleService.stop();
-        }
-
         if (movementService != null) {
-            movementService.stopAll(false);
+            movementService.shutdown();
         }
 
         if (store != null && manager != null) {

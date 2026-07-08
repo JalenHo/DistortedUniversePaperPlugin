@@ -86,7 +86,7 @@ public class FakePlayerListener implements Listener {
     }
 
     private void applyKnockback(UUID fakePlayerUuid, Entity damager) {
-        movementService.pauseForPhysics(fakePlayerUuid, KNOCKBACK_PAUSE_TICKS);
+        movementService.pauseForMovement(fakePlayerUuid, KNOCKBACK_PAUSE_TICKS);
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             manager.applyKnockback(fakePlayerUuid, damager.getLocation(), KNOCKBACK_STRENGTH);
             plugin.getServer().getScheduler().runTaskLater(plugin, () ->

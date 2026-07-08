@@ -1,18 +1,26 @@
 package dev.distorteduniverse.fakeplayer;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Mannequin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Random;
 import java.util.UUID;
 
 public class BotMovementService {
+    private static final double FLOAT_SURFACE_OFFSET = 0.10;
+
     private enum Mode {
         WANDER,
         MOVE_TO
@@ -23,8 +31,9 @@ public class BotMovementService {
     private final FakePlayerStore store;
     private FakePlayerSettings.MovementSettings settings;
     private final Map<UUID, MovementState> activeTasks = new HashMap<>();
-    private final Map<UUID, Integer> physicsPauseTicks = new HashMap<>();
+    private final Map<UUID, Integer> movementPauseTicks = new HashMap<>();
     private final Random random = new Random();
+    private BukkitTask ambientTask;
 
     public BotMovementService(
         JavaPlugin plugin,
@@ -36,6 +45,27 @@ public class BotMovementService {
         this.manager = manager;
         this.store = store;
         this.settings = settings;
+    }
+
+    public void start() {
+        if (ambientTask != null) {
+            return;
+        }
+
+        ambientTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                tickAmbientMovement();
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    public void shutdown() {
+        if (ambientTask != null) {
+            ambientTask.cancel();
+            ambientTask = null;
+        }
+        stopAll(false);
     }
 
     public void startWandering(String key, FakePlayer fakePlayer, double radius) {
@@ -74,7 +104,7 @@ public class BotMovementService {
             state.cancel();
         }
 
-        physicsPauseTicks.remove(uuid);
+        movementPauseTicks.remove(uuid);
         manager.setMovementActive(uuid, false);
         if (clearWandering) {
             store.findKeyByUuid(uuid).ifPresent(key ->
@@ -107,8 +137,8 @@ public class BotMovementService {
         return activeTasks.containsKey(uuid);
     }
 
-    public void pauseForPhysics(UUID uuid, int ticks) {
-        physicsPauseTicks.put(uuid, Math.max(physicsPauseTicks.getOrDefault(uuid, 0), ticks));
+    public void pauseForMovement(UUID uuid, int ticks) {
+        movementPauseTicks.put(uuid, Math.max(movementPauseTicks.getOrDefault(uuid, 0), ticks));
     }
 
     public void updateStoreKey(UUID uuid, String newKey) {
@@ -138,7 +168,7 @@ public class BotMovementService {
 
         Mannequin mannequin = entity.get();
         Location current = mannequin.getLocation();
-        if (consumePhysicsPause(uuid)) {
+        if (consumeMovementPause(uuid)) {
             updateStoredLocation(state.storeKey, current);
             return;
         }
@@ -183,7 +213,7 @@ public class BotMovementService {
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
 
         Location next = new Location(world, nx, current.getY(), nz, yaw, current.getPitch());
-        next.setY(WaterPhysics.walkingY(world, nx, nz, current.getY()));
+        next.setY(movementY(world, nx, nz, current.getY()));
         return next;
     }
 
@@ -193,21 +223,129 @@ public class BotMovementService {
         double x = origin.getX() + Math.cos(angle) * distance;
         double z = origin.getZ() + Math.sin(angle) * distance;
         World world = origin.getWorld();
-        double y = WaterPhysics.walkingY(world, x, z, origin.getY());
+        double y = movementY(world, x, z, origin.getY());
         return new Location(world, x, y, z);
     }
 
-    private boolean consumePhysicsPause(UUID uuid) {
-        Integer ticks = physicsPauseTicks.get(uuid);
+    private void tickAmbientMovement() {
+        for (UUID uuid : manager.getSpawnedUuids()) {
+            manager.getMannequin(uuid).ifPresent(mannequin -> {
+                applyWaterMovement(mannequin);
+                updateStoredLocation(uuid, mannequin.getLocation());
+            });
+        }
+    }
+
+    private void applyWaterMovement(Mannequin mannequin) {
+        Location location = mannequin.getLocation();
+        OptionalDouble floatingY = floatingY(location);
+        if (floatingY.isEmpty()) {
+            return;
+        }
+
+        double targetY = floatingY.getAsDouble();
+        double deltaY = targetY - location.getY();
+        Vector velocity = mannequin.getVelocity();
+
+        if (deltaY > 0.05) {
+            double upward = Math.min(0.18, Math.max(0.06, deltaY * 0.10));
+            velocity.setY(Math.max(velocity.getY(), upward));
+            mannequin.setVelocity(velocity);
+            return;
+        }
+
+        if (deltaY > -0.20 && velocity.getY() < -0.02) {
+            velocity.setY(-0.02);
+            mannequin.setVelocity(velocity);
+        }
+    }
+
+    private double movementY(World world, double x, double z, double currentY) {
+        OptionalDouble waterY = floatingY(world, x, z, currentY);
+        if (waterY.isPresent()) {
+            return waterY.getAsDouble();
+        }
+
+        int groundY = world.getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z));
+        double snapped = groundY + 1.0;
+        if (snapped < world.getMinHeight()) {
+            return currentY;
+        }
+        return snapped;
+    }
+
+    private OptionalDouble floatingY(Location location) {
+        World world = location.getWorld();
+        if (world == null) {
+            return OptionalDouble.empty();
+        }
+        return floatingY(world, location.getX(), location.getZ(), location.getY());
+    }
+
+    private OptionalDouble floatingY(World world, double x, double z, double referenceY) {
+        OptionalDouble surfaceY = waterSurfaceY(world, x, z, referenceY);
+        if (surfaceY.isEmpty()) {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(surfaceY.getAsDouble() - FLOAT_SURFACE_OFFSET);
+    }
+
+    private OptionalDouble waterSurfaceY(World world, double x, double z, double referenceY) {
+        int blockX = (int) Math.floor(x);
+        int blockZ = (int) Math.floor(z);
+        int centerY = (int) Math.floor(referenceY);
+        int minY = Math.max(world.getMinHeight(), centerY - 6);
+        int maxY = Math.min(world.getMaxHeight() - 1, centerY + 3);
+
+        for (int y = maxY; y >= minY; y--) {
+            if (!isWater(world.getBlockAt(blockX, y, blockZ))) {
+                continue;
+            }
+
+            int surfaceBlockY = y;
+            while (surfaceBlockY + 1 < world.getMaxHeight()
+                && isWater(world.getBlockAt(blockX, surfaceBlockY + 1, blockZ))) {
+                surfaceBlockY++;
+            }
+            if (!hasClearColumnToReference(world, blockX, blockZ, surfaceBlockY, centerY)) {
+                return OptionalDouble.empty();
+            }
+            return OptionalDouble.of(surfaceBlockY + 1.0);
+        }
+
+        return OptionalDouble.empty();
+    }
+
+    private boolean hasClearColumnToReference(World world, int x, int z, int surfaceBlockY, int referenceY) {
+        int fromY = Math.max(world.getMinHeight(), surfaceBlockY + 1);
+        int toY = Math.min(world.getMaxHeight() - 1, referenceY);
+        for (int y = fromY; y <= toY; y++) {
+            Block block = world.getBlockAt(x, y, z);
+            if (!isWater(block) && !block.isPassable()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isWater(Block block) {
+        if (block.getType() == Material.WATER) {
+            return true;
+        }
+        return block.getBlockData() instanceof Waterlogged waterlogged && waterlogged.isWaterlogged();
+    }
+
+    private boolean consumeMovementPause(UUID uuid) {
+        Integer ticks = movementPauseTicks.get(uuid);
         if (ticks == null || ticks <= 0) {
-            physicsPauseTicks.remove(uuid);
+            movementPauseTicks.remove(uuid);
             return false;
         }
 
         if (ticks == 1) {
-            physicsPauseTicks.remove(uuid);
+            movementPauseTicks.remove(uuid);
         } else {
-            physicsPauseTicks.put(uuid, ticks - 1);
+            movementPauseTicks.put(uuid, ticks - 1);
         }
         return true;
     }
@@ -220,6 +358,12 @@ public class BotMovementService {
 
     private void updateStoredLocation(String storeKey, Location location) {
         store.get(storeKey).ifPresent(fp -> store.update(storeKey, fp.withLocation(location)));
+    }
+
+    private void updateStoredLocation(UUID uuid, Location location) {
+        store.findKeyByUuid(uuid).ifPresent(key ->
+            store.get(key).ifPresent(fakePlayer -> store.update(key, fakePlayer.withLocation(location)))
+        );
     }
 
     private final class MovementState {
