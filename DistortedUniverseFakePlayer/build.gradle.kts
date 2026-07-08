@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.distorteduniverse"
-version = "0.9.5.1-dev"
+version = "0.9.5.2-dev"
 
 val paperApiVersion: String by rootProject.extra
 val paperDevBundle: String = paperApiVersion

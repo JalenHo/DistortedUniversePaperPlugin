@@ -1,4 +1,4 @@
-config-version: 4
+config-version: 5
 
 enabled: true
 
@@ -12,7 +12,7 @@ movement:
   wander-radius: 10
 
 behavior:
-  invulnerable: true
+  invulnerable: false
   knockback-when-invulnerable: true
   gravity: true
   immovable: false

@@ -32,7 +32,7 @@ public final class MovementCollision {
             return null;
         }
 
-        if (!isHorizontalPathClear(world, from.getX(), from.getY(), from.getZ(), toX, toZ)) {
+        if (!isHorizontalPathClear(world, from.getX(), from.getY(), from.getZ(), toX, targetY, toZ)) {
             return null;
         }
 
@@ -84,6 +84,7 @@ public final class MovementCollision {
         double fromY,
         double fromZ,
         double toX,
+        double toY,
         double toZ
     ) {
         int fromBlockX = (int) Math.floor(fromX);
@@ -95,7 +96,7 @@ public final class MovementCollision {
             return true;
         }
 
-        int feetY = (int) Math.floor(fromY);
+        int feetY = (int) Math.floor(Math.max(fromY, toY));
         int headY = feetY + 1;
 
         int stepX = Integer.compare(toBlockX, fromBlockX);
