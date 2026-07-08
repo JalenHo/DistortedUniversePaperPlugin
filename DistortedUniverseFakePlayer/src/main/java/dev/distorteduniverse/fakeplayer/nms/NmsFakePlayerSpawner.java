@@ -62,7 +62,7 @@ public final class NmsFakePlayerSpawner {
             serverPlayer.setXRot(location.getPitch());
 
             Connection connection = new FakeConnection(InetAddress.getLoopbackAddress());
-            CommonListenerCookie cookie = new CommonListenerCookie(profile, 0, clientInformation, false);
+            CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
             serverPlayer.connection = new ServerGamePacketListenerImpl(
                 minecraftServer,
                 connection,
