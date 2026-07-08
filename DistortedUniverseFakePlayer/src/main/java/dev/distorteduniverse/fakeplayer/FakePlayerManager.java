@@ -2,6 +2,7 @@ package dev.distorteduniverse.fakeplayer;
 
 import dev.distorteduniverse.fakeplayer.nms.NmsFakePlayerSpawner;
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -36,6 +37,29 @@ public class FakePlayerManager {
 
     public void updateMovementSpeed(double movementSpeed) {
         this.movementSpeed = movementSpeed;
+    }
+
+    public int cleanupOrphanedFakePlayers() {
+        int removed = 0;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!FakePlayerMarkers.isFakePlayer(player)) {
+                continue;
+            }
+
+            boolean tracked = getTrackedPlayer(player.getUniqueId())
+                .map(candidate -> candidate.getUniqueId().equals(player.getUniqueId()))
+                .orElse(false);
+            boolean stored = store.findKeyByUuid(player.getUniqueId()).isPresent();
+            if (tracked || stored) {
+                continue;
+            }
+
+            plugin.getLogger().warning("Removing orphaned fake player entity " + player.getName());
+            FakePlayerMarkers.unmark(player);
+            spawner.remove(player);
+            removed++;
+        }
+        return removed;
     }
 
     public boolean spawnFakePlayer(FakePlayer fakePlayer) {
