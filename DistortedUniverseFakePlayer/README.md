@@ -7,6 +7,8 @@ Server-side fake players spawned through Paper NMS (`ServerPlayer` + fake networ
 - **NMS Fake Players**: Spawns real `Player` entities (not Mannequins)
 - **Spawn / Despawn**: Create and remove fake players at your location
 - **Command Walking**: Wander nearby or walk to coordinates with collision checks
+- **Water Buoyancy**: Floats on the water surface like villagers/pigs instead of sinking
+- **Live Config**: Change global and per-bot settings on demand without restart
 - **Join/Leave Messages**: Integrates with DistortedUniversePlayerEvent when installed
 - **Persistence**: Bot data survives server restarts via `fakeplayers.yml`
 
@@ -20,12 +22,27 @@ Server-side fake players spawned through Paper NMS (`ServerPlayer` + fake networ
 | `/dfp move <name> <x> <y> <z>` | Walk to coordinates |
 | `/dfp move <name> stop` | Stop movement |
 | `/dfp list` | List all fake players and status |
-| `/dfp reload` | Reload configuration |
+| `/dfp config [list\|get <key>\|set <key> <value>]` | View or change global settings live |
+| `/dfp set <name> <property> <value>` | Change per-bot settings live (name, skin, immortal, wandering) |
+| `/dfp reload` | Reload configuration and resume wandering |
+
+### Live config examples
+
+```text
+/dfp config set behavior.invulnerable true
+/dfp config set behavior.immortal true
+/dfp config set movement.speed 0.25
+/dfp set Steve immortal true
+/dfp set Steve name SteveBot
+/dfp set Steve skin default
+```
+
+`immortal` is an alias for `invulnerable`.
 
 ## Configuration
 
 ```yaml
-config-version: 4
+config-version: 5
 enabled: true
 
 display:
@@ -38,7 +55,7 @@ movement:
   wander-radius: 10
 
 behavior:
-  invulnerable: true
+  invulnerable: false
   knockback-when-invulnerable: true
   gravity: true
   immovable: false
@@ -50,6 +67,8 @@ skins:
   folder: "skins"
   default: "default"
 ```
+
+Per-bot overrides (name, skin, immortal) are stored in `fakeplayers.yml` and can be changed with `/dfp set`.
 
 ## Build
 

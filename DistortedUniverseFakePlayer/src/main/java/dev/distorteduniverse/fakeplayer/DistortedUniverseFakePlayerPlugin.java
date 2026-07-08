@@ -58,7 +58,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         lifecycleService = new FakePlayerLifecycleService(store, manager, movementService, broadcastService);
 
         getServer().getPluginManager().registerEvents(
-            new FakePlayerListener(manager, store, settingsService, lifecycleService),
+            new FakePlayerListener(this, manager, store, settingsService, lifecycleService, movementService),
             this
         );
         getServer().getPluginManager().registerEvents(new FakePlayerJoinGuard(), this);
@@ -87,7 +87,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         }
 
         if (movementService != null) {
-            movementService.stopAll();
+            movementService.shutdown();
         }
 
         getLogger().info("DistortedUniverseFakePlayer disabled!");

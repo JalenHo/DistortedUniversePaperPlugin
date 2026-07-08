@@ -51,7 +51,8 @@ public class FakePlayerLifecycleService {
         }
 
         FakePlayer fp = fakePlayer.get();
-        Location location = manager.getPlayer(fp.uuid())
+        Location location = manager.getTrackedPlayer(fp.uuid())
+            .filter(player -> player.isValid())
             .map(player -> player.getLocation())
             .orElse(fp.location());
 
@@ -63,9 +64,11 @@ public class FakePlayerLifecycleService {
             case DESPAWN -> broadcastService.broadcastLeave(fp.name(), location, false);
         }
 
+        // Always force-remove on death (getPlayer() ignores dead entities).
+        // Despawn uses the normal path when still living.
         if (reason == RemovalReason.DEATH) {
             manager.forceDespawnFakePlayer(fp.uuid());
-        } else if (manager.isSpawned(fp.uuid())) {
+        } else if (manager.getTrackedPlayer(fp.uuid()).isPresent()) {
             manager.despawnFakePlayer(fp.uuid());
         }
         movementService.stop(fp.uuid());

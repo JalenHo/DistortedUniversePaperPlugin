@@ -37,6 +37,9 @@ public class FakePlayerManager {
 
     public void updateMovementSpeed(double movementSpeed) {
         this.movementSpeed = movementSpeed;
+        for (UUID fakeUuid : new ArrayList<>(activePlayers.keySet())) {
+            setMovementActive(fakeUuid, false);
+        }
     }
 
     public int cleanupOrphanedFakePlayers() {
@@ -100,7 +103,7 @@ public class FakePlayerManager {
         }
 
         FakePlayerMarkers.mark(player);
-        configureBehavior(player);
+        configureBehavior(player, fakePlayer);
         applyAppearance(player, fakePlayer.name(), skinProperty);
         activePlayers.put(uuid, player);
         return true;
@@ -126,7 +129,18 @@ public class FakePlayerManager {
     public boolean forceDespawnFakePlayer(UUID uuid) {
         Player player = activePlayers.remove(uuid);
         if (player == null) {
-            return false;
+            // Still try to remove a lingering online entity with this UUID.
+            Player online = Bukkit.getPlayer(uuid);
+            if (online == null || !FakePlayerMarkers.isFakePlayer(online)) {
+                return false;
+            }
+            player = online;
+        }
+
+        World world = player.getWorld();
+        if (world != null) {
+            Location location = player.getLocation();
+            world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
         }
 
         FakePlayerMarkers.unmark(player);
@@ -135,7 +149,10 @@ public class FakePlayerManager {
     }
 
     public void teleportFakePlayer(UUID uuid, Location newLocation) {
-        getPlayer(uuid).ifPresent(player -> {
+        getTrackedPlayer(uuid).ifPresent(player -> {
+            if (!player.isValid()) {
+                return;
+            }
             player.teleport(newLocation);
             store.findKeyByUuid(uuid).ifPresent(key ->
                 store.get(key).ifPresent(fp -> store.update(key, fp.withLocation(newLocation)))
@@ -143,17 +160,20 @@ public class FakePlayerManager {
         });
     }
 
+    /**
+     * Living, online fake player suitable for movement / interaction.
+     */
     public Optional<Player> getPlayer(UUID fakePlayerUuid) {
         Player player = activePlayers.get(fakePlayerUuid);
-        if (player == null || !player.isOnline() || player.isDead()) {
-            if (player != null) {
-                activePlayers.remove(fakePlayerUuid);
-            }
+        if (player == null || !player.isOnline() || player.isDead() || !player.isValid()) {
             return Optional.empty();
         }
         return Optional.of(player);
     }
 
+    /**
+     * Tracked entity reference even if dead — used for death cleanup.
+     */
     public Optional<Player> getTrackedPlayer(UUID fakePlayerUuid) {
         return Optional.ofNullable(activePlayers.get(fakePlayerUuid));
     }
@@ -164,13 +184,28 @@ public class FakePlayerManager {
             return location;
         }
 
+        // Prefer water surface when spawning in/near water.
+        if (MovementCollision.isInFluid(location)) {
+            Double surfaceY = MovementCollision.findWaterSurfaceY(
+                world,
+                location.getX(),
+                location.getZ(),
+                location.getY()
+            );
+            if (surfaceY != null) {
+                Location floated = location.clone();
+                floated.setY(surfaceY);
+                return floated;
+            }
+        }
+
         Location snapped = location.clone();
         int groundY = world.getHighestBlockYAt(snapped);
         snapped.setY(groundY + 1.0);
         return snapped;
     }
 
-    private void applyAppearance(Player player, String name, Optional<SkinProperty> skinProperty) {
+    public void applyAppearance(Player player, String name, Optional<SkinProperty> skinProperty) {
         player.customName(null);
         player.setCustomNameVisible(false);
         player.displayName(net.kyori.adventure.text.Component.text(name));
@@ -182,6 +217,20 @@ public class FakePlayerManager {
             skinProperty.orElse(null)
         );
         player.setPlayerProfile(profile);
+    }
+
+    public void refreshAppearance(FakePlayer fakePlayer) {
+        getTrackedPlayer(fakePlayer.uuid()).ifPresent(player -> {
+            if (!player.isValid()) {
+                return;
+            }
+            Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
+            if (skinProperty.isEmpty()) {
+                skinProperty = skinLoader.getSkin("default");
+            }
+            applyAppearance(player, fakePlayer.name(), skinProperty);
+            configureBehavior(player, fakePlayer);
+        });
     }
 
     public void setMovementActive(UUID uuid, boolean active) {
@@ -196,8 +245,27 @@ public class FakePlayerManager {
         });
     }
 
+    public boolean isInvulnerable(UUID uuid) {
+        return store.getByUuid(uuid)
+            .map(fp -> fp.resolvesInvulnerable(behavior.invulnerable()))
+            .orElse(behavior.invulnerable());
+    }
+
     private void configureBehavior(Player player) {
-        player.setInvulnerable(behavior.invulnerable());
+        store.getByUuid(player.getUniqueId()).ifPresentOrElse(
+            fp -> configureBehavior(player, fp),
+            () -> {
+                player.setInvulnerable(behavior.invulnerable());
+                player.setGravity(behavior.gravity());
+                if (behavior.immovable()) {
+                    player.setWalkSpeed(0.0F);
+                }
+            }
+        );
+    }
+
+    private void configureBehavior(Player player, FakePlayer fakePlayer) {
+        player.setInvulnerable(fakePlayer.resolvesInvulnerable(behavior.invulnerable()));
         player.setGravity(behavior.gravity());
         if (behavior.immovable()) {
             player.setWalkSpeed(0.0F);
@@ -234,11 +302,19 @@ public class FakePlayerManager {
     public void updateBehavior(FakePlayerSettings.BehaviorSettings newBehavior) {
         this.behavior = newBehavior;
         for (UUID fakeUuid : new ArrayList<>(activePlayers.keySet())) {
-            getPlayer(fakeUuid).ifPresent(this::configureBehavior);
+            getTrackedPlayer(fakeUuid).ifPresent(player -> {
+                if (player.isValid()) {
+                    configureBehavior(player);
+                }
+            });
         }
     }
 
     public void updateDisplay(FakePlayerSettings.DisplaySettings newDisplay) {
         this.display = newDisplay;
+    }
+
+    public FakePlayerSettings.BehaviorSettings behavior() {
+        return behavior;
     }
 }

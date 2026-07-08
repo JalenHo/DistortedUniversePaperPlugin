@@ -32,6 +32,76 @@ public class FakePlayerSettingsService {
         return settings;
     }
 
+    public void updateSettings(FakePlayerSettings newSettings) {
+        this.settings = newSettings;
+        save();
+    }
+
+    public void updateBehavior(FakePlayerSettings.BehaviorSettings behavior) {
+        FakePlayerSettings current = settings;
+        settings = new FakePlayerSettings(
+            current.enabled(),
+            current.movement(),
+            behavior,
+            current.display(),
+            current.messages(),
+            current.skins()
+        );
+        save();
+    }
+
+    public void updateMovement(FakePlayerSettings.MovementSettings movement) {
+        FakePlayerSettings current = settings;
+        settings = new FakePlayerSettings(
+            current.enabled(),
+            movement,
+            current.behavior(),
+            current.display(),
+            current.messages(),
+            current.skins()
+        );
+        save();
+    }
+
+    public void updateDisplay(FakePlayerSettings.DisplaySettings display) {
+        FakePlayerSettings current = settings;
+        settings = new FakePlayerSettings(
+            current.enabled(),
+            current.movement(),
+            current.behavior(),
+            display,
+            current.messages(),
+            current.skins()
+        );
+        save();
+    }
+
+    public void updateEnabled(boolean enabled) {
+        FakePlayerSettings current = settings;
+        settings = new FakePlayerSettings(
+            enabled,
+            current.movement(),
+            current.behavior(),
+            current.display(),
+            current.messages(),
+            current.skins()
+        );
+        save();
+    }
+
+    public void updateSkins(FakePlayerSettings.SkinsSettings skins) {
+        FakePlayerSettings current = settings;
+        settings = new FakePlayerSettings(
+            current.enabled(),
+            current.movement(),
+            current.behavior(),
+            current.display(),
+            current.messages(),
+            skins
+        );
+        save();
+    }
+
     private void migrateLegacyBehaviorDefaults(FileConfiguration config) {
         int configVersion = config.getInt("config-version", 0);
         if (configVersion >= 5) {
