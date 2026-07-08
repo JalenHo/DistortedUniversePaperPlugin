@@ -2,6 +2,9 @@ package dev.distorteduniverse.fakeplayer.nms;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import dev.distorteduniverse.fakeplayer.SkinProperty;
 import java.util.UUID;
 
@@ -16,9 +19,9 @@ public final class GameProfileFactory {
             return new GameProfile(uuid, name);
         }
 
-        GameProfile profile = new GameProfile(uuid, name);
+        Multimap<String, Property> propertyEntries = ArrayListMultimap.create();
         String signature = skin.signature() == null || skin.signature().isBlank() ? null : skin.signature();
-        profile.properties().put(TEXTURES, new Property(TEXTURES, skin.value(), signature));
-        return profile;
+        propertyEntries.put(TEXTURES, new Property(TEXTURES, skin.value(), signature));
+        return new GameProfile(uuid, name, new PropertyMap(propertyEntries));
     }
 }
