@@ -63,7 +63,9 @@ public class FakePlayerLifecycleService {
             case DESPAWN -> broadcastService.broadcastLeave(fp.name(), location, false);
         }
 
-        if (manager.isSpawned(fp.uuid())) {
+        if (reason == RemovalReason.DEATH) {
+            manager.forceDespawnFakePlayer(fp.uuid());
+        } else if (manager.isSpawned(fp.uuid())) {
             manager.despawnFakePlayer(fp.uuid());
         }
         movementService.stop(fp.uuid());

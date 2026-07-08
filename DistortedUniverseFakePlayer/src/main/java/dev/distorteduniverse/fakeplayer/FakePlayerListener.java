@@ -3,10 +3,13 @@ package dev.distorteduniverse.fakeplayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
 
 public class FakePlayerListener implements Listener {
     private final FakePlayerManager manager;
@@ -47,13 +50,20 @@ public class FakePlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!settingsService.settings().behavior().invulnerable()) {
+        if (event.getDamager() instanceof Player damager && FakePlayerMarkers.isFakePlayer(damager)) {
+            event.setCancelled(true);
             return;
         }
 
-        if (event.getDamager() instanceof Player damager && FakePlayerMarkers.isFakePlayer(damager)) {
-            event.setCancelled(true);
+        if (!(event.getEntity() instanceof Player player) || !FakePlayerMarkers.isFakePlayer(player)) {
+            return;
         }
+
+        if (settingsService.settings().behavior().invulnerable()) {
+            return;
+        }
+
+        applyManualKnockback(player, resolveAttacker(event.getDamager()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -67,5 +77,32 @@ public class FakePlayerListener implements Listener {
         store.findKeyByUuid(player.getUniqueId()).ifPresent(key ->
             lifecycleService.remove(key, FakePlayerLifecycleService.RemovalReason.DEATH)
         );
+    }
+
+    private void applyManualKnockback(Player victim, Entity attacker) {
+        if (attacker == null) {
+            return;
+        }
+
+        Vector direction = victim.getLocation().toVector().subtract(attacker.getLocation().toVector());
+        direction.setY(0.0D);
+        if (direction.lengthSquared() < 1.0E-6D) {
+            return;
+        }
+
+        Vector currentVelocity = victim.getVelocity();
+        Vector knockback = direction.normalize().multiply(0.38D);
+        knockback.setY(Math.max(0.28D, currentVelocity.getY()));
+        victim.setVelocity(currentVelocity.multiply(0.35D).add(knockback));
+    }
+
+    private Entity resolveAttacker(Entity damager) {
+        if (damager instanceof org.bukkit.entity.Projectile projectile) {
+            ProjectileSource shooter = projectile.getShooter();
+            if (shooter instanceof Entity shooterEntity) {
+                return shooterEntity;
+            }
+        }
+        return damager;
     }
 }
