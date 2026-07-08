@@ -6,6 +6,7 @@ public record FakePlayerSettings(
     boolean enabled,
     MovementSettings movement,
     BehaviorSettings behavior,
+    MessagesSettings messages,
     SkinsSettings skins
 ) {
     public static FakePlayerSettings from(ConfigurationSection config) {
@@ -13,15 +14,17 @@ public record FakePlayerSettings(
             getBoolean(config, "enabled", true),
             MovementSettings.from(config.getConfigurationSection("movement"), config.getConfigurationSection("wandering")),
             BehaviorSettings.from(config.getConfigurationSection("behavior")),
+            MessagesSettings.from(config.getConfigurationSection("messages")),
             SkinsSettings.from(config.getConfigurationSection("skins"))
         );
     }
 
     public void writeTo(ConfigurationSection config) {
-        config.set("config-version", 2);
+        config.set("config-version", 3);
         config.set("enabled", enabled);
         movement.writeTo(config.createSection("movement"));
         behavior.writeTo(config.createSection("behavior"));
+        messages.writeTo(config.createSection("messages"));
         skins.writeTo(config.createSection("skins"));
     }
 
@@ -31,15 +34,17 @@ public record FakePlayerSettings(
 
     public record BehaviorSettings(
         boolean invulnerable,
+        boolean knockbackWhenInvulnerable,
         boolean gravity,
         boolean immovable
     ) {
         public static BehaviorSettings from(ConfigurationSection config) {
             if (config == null) {
-                return new BehaviorSettings(false, true, false);
+                return new BehaviorSettings(false, true, true, false);
             }
             return new BehaviorSettings(
                 getBoolean(config, "invulnerable", false),
+                getBoolean(config, "knockback-when-invulnerable", true),
                 getBoolean(config, "gravity", true),
                 getBoolean(config, "immovable", false)
             );
@@ -47,8 +52,79 @@ public record FakePlayerSettings(
 
         public void writeTo(ConfigurationSection config) {
             config.set("invulnerable", invulnerable);
+            config.set("knockback-when-invulnerable", knockbackWhenInvulnerable);
             config.set("gravity", gravity);
             config.set("immovable", immovable);
+        }
+    }
+
+    public record MessagesSettings(
+        boolean usePlayerEventSettings,
+        FakePlayerBroadcastService.MessageSettings join,
+        FakePlayerBroadcastService.MessageSettings leave,
+        FakePlayerBroadcastService.MessageSettings deathLeave,
+        FakePlayerBroadcastService.MessageSettings death
+    ) {
+        public static MessagesSettings from(ConfigurationSection config) {
+            if (config == null) {
+                return defaults();
+            }
+
+            return new MessagesSettings(
+                getBoolean(config, "use-player-event-settings", true),
+                messageSettings(config.getConfigurationSection("join"), true, 64.0D, "<yellow><player_name> joined the game</yellow>"),
+                messageSettings(config.getConfigurationSection("leave"), true, 64.0D, "<yellow><player_name> left the game</yellow>"),
+                messageSettings(config.getConfigurationSection("death-leave"), true, 64.0D, "<yellow><player_name> left the game</yellow>"),
+                messageSettings(config.getConfigurationSection("death"), true, 64.0D, "<player_name> died")
+            );
+        }
+
+        public void writeTo(ConfigurationSection config) {
+            config.set("use-player-event-settings", usePlayerEventSettings);
+            writeMessageSettings(config.createSection("join"), join);
+            writeMessageSettings(config.createSection("leave"), leave);
+            writeMessageSettings(config.createSection("death-leave"), deathLeave);
+            writeMessageSettings(config.createSection("death"), death);
+        }
+
+        private static MessagesSettings defaults() {
+            return new MessagesSettings(
+                true,
+                new FakePlayerBroadcastService.MessageSettings(true, 64.0D, "<yellow><player_name> joined the game</yellow>"),
+                new FakePlayerBroadcastService.MessageSettings(true, 64.0D, "<yellow><player_name> left the game</yellow>"),
+                new FakePlayerBroadcastService.MessageSettings(true, 64.0D, "<yellow><player_name> left the game</yellow>"),
+                new FakePlayerBroadcastService.MessageSettings(true, 64.0D, "<player_name> died")
+            );
+        }
+
+        private static FakePlayerBroadcastService.MessageSettings messageSettings(
+            ConfigurationSection section,
+            boolean enabledDefault,
+            double radiusDefault,
+            String templateDefault
+        ) {
+            if (section == null) {
+                return new FakePlayerBroadcastService.MessageSettings(enabledDefault, radiusDefault, templateDefault);
+            }
+            return new FakePlayerBroadcastService.MessageSettings(
+                getBoolean(section, "enabled", enabledDefault),
+                getDouble(section, "radius", radiusDefault, 0.0D, 100000.0D),
+                section.getString("template", templateDefault)
+            );
+        }
+
+        private static void writeMessageSettings(ConfigurationSection section, FakePlayerBroadcastService.MessageSettings settings) {
+            section.set("enabled", settings.enabled());
+            section.set("radius", settings.radius());
+            section.set("template", settings.template());
+        }
+
+        private static double getDouble(ConfigurationSection config, String path, double fallback, double min, double max) {
+            if (!config.isSet(path)) {
+                return fallback;
+            }
+            double value = config.getDouble(path);
+            return Math.max(min, Math.min(max, value));
         }
     }
 

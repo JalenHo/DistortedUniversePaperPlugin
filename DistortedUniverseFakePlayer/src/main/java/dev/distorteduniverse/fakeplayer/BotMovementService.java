@@ -136,43 +136,54 @@ public class BotMovementService {
         }
 
         Location next = stepToward(current, target, settings.speed());
+        if (next == null) {
+            if (state.mode == Mode.WANDER) {
+                state.target = pickWanderTarget(current, state.wanderRadius);
+            } else {
+                stop(uuid);
+            }
+            return;
+        }
+
         mannequin.teleport(next);
         updateStoredLocation(storeKey, next);
     }
 
     private Location stepToward(Location current, Location target, double speed) {
-        World world = current.getWorld();
         double dx = target.getX() - current.getX();
         double dz = target.getZ() - current.getZ();
         double distance = Math.sqrt(dx * dx + dz * dz);
-        double step = Math.min(speed, distance);
+        if (distance < 0.0001D) {
+            return current;
+        }
 
+        double step = Math.min(speed, distance);
         double nx = current.getX() + (dx / distance) * step;
         double nz = current.getZ() + (dz / distance) * step;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
 
-        Location next = new Location(world, nx, current.getY(), nz, yaw, current.getPitch());
-        next.setY(snapToGround(world, nx, nz, current.getY()));
-        return next;
-    }
-
-    private double snapToGround(World world, double x, double z, double fallbackY) {
-        int groundY = world.getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z));
-        double snapped = groundY + 1.0;
-        if (snapped < world.getMinHeight()) {
-            return fallbackY;
-        }
-        return snapped;
+        Location next = MovementCollision.resolveStep(current, nx, nz, yaw);
+        return next == null ? null : next;
     }
 
     private Location pickWanderTarget(Location origin, double radius) {
-        double angle = random.nextDouble() * 2 * Math.PI;
-        double distance = random.nextDouble() * radius;
-        double x = origin.getX() + Math.cos(angle) * distance;
-        double z = origin.getZ() + Math.sin(angle) * distance;
         World world = origin.getWorld();
-        double y = snapToGround(world, x, z, origin.getY());
-        return new Location(world, x, y, z);
+        if (world == null) {
+            return origin;
+        }
+
+        for (int attempt = 0; attempt < 8; attempt++) {
+            double angle = random.nextDouble() * 2 * Math.PI;
+            double distance = random.nextDouble() * radius;
+            double x = origin.getX() + Math.cos(angle) * distance;
+            double z = origin.getZ() + Math.sin(angle) * distance;
+            double y = MovementCollision.findStandableY(world, x, z, origin.getY());
+            if (!Double.isNaN(y)) {
+                return new Location(world, x, y, z);
+            }
+        }
+
+        return origin.clone();
     }
 
     private double horizontalDistance(Location a, Location b) {

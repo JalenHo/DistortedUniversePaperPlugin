@@ -1,4 +1,4 @@
-config-version: 2
+config-version: 3
 
 enabled: true
 
@@ -10,8 +10,28 @@ movement:
 
 behavior:
   invulnerable: true
+  knockback-when-invulnerable: true
   gravity: true
   immovable: false
+
+messages:
+  use-player-event-settings: true
+  join:
+    enabled: true
+    radius: 64.0
+    template: "<yellow><player_name> joined the game</yellow>"
+  leave:
+    enabled: true
+    radius: 64.0
+    template: "<yellow><player_name> left the game</yellow>"
+  death-leave:
+    enabled: true
+    radius: 64.0
+    template: "<yellow><player_name> left the game</yellow>"
+  death:
+    enabled: true
+    radius: 64.0
+    template: "<player_name> died"
 
 skins:
   folder: "skins"

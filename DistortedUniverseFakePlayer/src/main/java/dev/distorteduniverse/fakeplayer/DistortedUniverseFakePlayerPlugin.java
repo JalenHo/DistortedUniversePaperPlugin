@@ -11,6 +11,8 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerStore store;
     private FakePlayerManager manager;
     private BotMovementService movementService;
+    private FakePlayerBroadcastService broadcastService;
+    private FakePlayerLifecycleService lifecycleService;
     private FakePlayerListener listener;
 
     @Override
@@ -37,7 +39,10 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             settingsService.settings().movement()
         );
 
-        listener = new FakePlayerListener(manager, settingsService);
+        broadcastService = new FakePlayerBroadcastService(this, settingsService);
+        lifecycleService = new FakePlayerLifecycleService(store, manager, movementService, broadcastService);
+
+        listener = new FakePlayerListener(manager, store, settingsService, lifecycleService);
         getServer().getPluginManager().registerEvents(listener, this);
 
         FakePlayerCommand command = new FakePlayerCommand(this);
@@ -107,5 +112,9 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
 
     public BotMovementService getMovementService() {
         return movementService;
+    }
+
+    public FakePlayerLifecycleService getLifecycleService() {
+        return lifecycleService;
     }
 }
