@@ -230,6 +230,8 @@ public class FakePlayerCommand implements CommandExecutor, TabExecutor {
         FakePlayerSettings settings = settingsService.settings();
         plugin.getSkinLoader().load(settings.skins());
         manager.updateBehavior(settings.behavior());
+        manager.updateDisplay(settings.display());
+        manager.updateMovementSpeed(settings.movement().speed());
         movementService.updateSettings(settings.movement());
         sender.sendMessage(Component.text("Configuration reloaded!", NamedTextColor.GREEN));
         return true;

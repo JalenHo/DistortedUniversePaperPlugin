@@ -1,5 +1,6 @@
 package dev.distorteduniverse.fakeplayer;
 
+import dev.distorteduniverse.fakeplayer.nms.NmsFakePlayerSpawner;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
@@ -9,14 +10,16 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerSettingsService settingsService;
     private FakePlayerSkinLoader skinLoader;
     private FakePlayerStore store;
+    private NmsFakePlayerSpawner nmsSpawner;
     private FakePlayerManager manager;
     private BotMovementService movementService;
     private FakePlayerBroadcastService broadcastService;
     private FakePlayerLifecycleService lifecycleService;
-    private FakePlayerListener listener;
 
     @Override
     public void onEnable() {
+        FakePlayerMarkers.init(this);
+
         settingsService = new FakePlayerSettingsService(this);
         settingsService.load();
 
@@ -26,24 +29,39 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
         skinLoader = new FakePlayerSkinLoader(this);
         skinLoader.load(settingsService.settings().skins());
 
+        nmsSpawner = new NmsFakePlayerSpawner(this);
+        if (!nmsSpawner.isAvailable()) {
+            getLogger().severe("NMS fake player spawner failed to initialize. Disabling plugin.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        FakePlayerSettings settings = settingsService.settings();
         manager = new FakePlayerManager(
+            this,
             skinLoader,
             store,
-            settingsService.settings().behavior()
+            nmsSpawner,
+            settings.behavior(),
+            settings.display()
         );
+        manager.updateMovementSpeed(settings.movement().speed());
 
         movementService = new BotMovementService(
             this,
             manager,
             store,
-            settingsService.settings().movement()
+            settings.movement()
         );
 
         broadcastService = new FakePlayerBroadcastService(this, settingsService);
         lifecycleService = new FakePlayerLifecycleService(store, manager, movementService, broadcastService);
 
-        listener = new FakePlayerListener(manager, store, settingsService, lifecycleService);
-        getServer().getPluginManager().registerEvents(listener, this);
+        getServer().getPluginManager().registerEvents(
+            new FakePlayerListener(manager, store, settingsService, lifecycleService),
+            this
+        );
+        getServer().getPluginManager().registerEvents(new FakePlayerJoinGuard(), this);
 
         FakePlayerCommand command = new FakePlayerCommand(this);
         getCommand("dfp").setExecutor(command);
@@ -51,7 +69,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
 
         respawnAllFakePlayers();
 
-        getLogger().info("DistortedUniverseFakePlayer enabled!");
+        getLogger().info("DistortedUniverseFakePlayer enabled (NMS fake players).");
     }
 
     @Override

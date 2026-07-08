@@ -2,7 +2,7 @@ name: DistortedUniverseFakePlayer
 version: ${version}
 main: dev.distorteduniverse.fakeplayer.DistortedUniverseFakePlayerPlugin
 api-version: '26.2'
-description: Fake player bots with spawn, despawn, and command-driven walking.
+description: NMS fake player bots with spawn, despawn, and command-driven walking.
 author: hokay
 softdepend:
   - DistortedUniversePlayerEvent

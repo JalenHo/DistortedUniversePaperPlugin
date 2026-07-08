@@ -1,13 +1,13 @@
 # DistortedUniverseFakePlayer
 
-Server-side fake player bots using Paper Mannequin entities. Bots look like normal players and can walk around via commands.
+Server-side fake players spawned through Paper NMS (`ServerPlayer` + fake network connection). Bots use real player nametags, skins, knockback, and death handling while staying command-driven.
 
 ## Features
 
-- **Join/Leave Messages**: Broadcasts join/leave/death messages (integrates with DistortedUniversePlayerEvent when installed)
+- **NMS Fake Players**: Spawns real `Player` entities (not Mannequins)
 - **Spawn / Despawn**: Create and remove fake players at your location
-- **Command Walking**: Wander nearby or walk to coordinates
-- **Default Skin**: Uses `skins/default.json` for player appearance
+- **Command Walking**: Wander nearby or walk to coordinates with collision checks
+- **Join/Leave Messages**: Integrates with DistortedUniversePlayerEvent when installed
 - **Persistence**: Bot data survives server restarts via `fakeplayers.yml`
 
 ## Commands
@@ -25,8 +25,11 @@ Server-side fake player bots using Paper Mannequin entities. Bots look like norm
 ## Configuration
 
 ```yaml
-config-version: 3
+config-version: 4
 enabled: true
+
+display:
+  tab-list: false  # reserved for future tab-list control
 
 movement:
   speed: 0.2
@@ -42,35 +45,23 @@ behavior:
 
 messages:
   use-player-event-settings: true
-  join:
-    enabled: true
-    radius: 64.0
-    template: "<yellow><player_name> joined the game</yellow>"
-  leave:
-    enabled: true
-    radius: 64.0
-    template: "<yellow><player_name> left the game</yellow>"
 
 skins:
   folder: "skins"
   default: "default"
 ```
 
-## Skins
+## Build
 
-Place skin JSON files in the `skins/` folder (relative to plugin directory). Each file should be named `<skin-name>.json` and contain:
+This module uses **paperweight userdev** for NMS access and targets **Paper 26.2** with Mojang mappings.
 
-```json
-{
-    "name": "my-skin",
-    "value": "base64-encoded-texture-data",
-    "signature": "base64-encoded-signature"
-}
+```bash
+./gradlew :DistortedUniverseFakePlayer:build
 ```
 
 ## Requirements
 
-- Paper API 26.2 (Minecraft 26.2)
+- Paper 26.2
 - Java 25
 
 ## Permissions

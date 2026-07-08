@@ -5,7 +5,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.entity.Player;
+import org.bukkit.event.entity.PlayerDeathEvent;
 
 public class FakePlayerListener implements Listener {
     private final FakePlayerManager manager;
@@ -27,7 +28,7 @@ public class FakePlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (!manager.isManagedEntity(event.getEntity().getUniqueId())) {
+        if (!(event.getEntity() instanceof Player player) || !FakePlayerMarkers.isFakePlayer(player)) {
             return;
         }
 
@@ -50,17 +51,21 @@ public class FakePlayerListener implements Listener {
             return;
         }
 
-        if (manager.isManagedEntity(event.getDamager().getUniqueId())) {
+        if (event.getDamager() instanceof Player damager && FakePlayerMarkers.isFakePlayer(damager)) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEntityDeath(EntityDeathEvent event) {
-        manager.getFakePlayerUuid(event.getEntity().getUniqueId()).ifPresent(fakeUuid ->
-            store.findKeyByUuid(fakeUuid).ifPresent(key ->
-                lifecycleService.remove(key, FakePlayerLifecycleService.RemovalReason.DEATH)
-            )
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getPlayer();
+        if (!FakePlayerMarkers.isFakePlayer(player)) {
+            return;
+        }
+
+        event.deathMessage(null);
+        store.findKeyByUuid(player.getUniqueId()).ifPresent(key ->
+            lifecycleService.remove(key, FakePlayerLifecycleService.RemovalReason.DEATH)
         );
     }
 }

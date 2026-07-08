@@ -1,7 +1,6 @@
 package dev.distorteduniverse.fakeplayer;
 
 import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 
 import java.util.Optional;
 
@@ -33,8 +32,8 @@ public class FakePlayerLifecycleService {
             return false;
         }
 
-        Location location = manager.getEntity(fakePlayer.uuid())
-            .map(Entity::getLocation)
+        Location location = manager.getPlayer(fakePlayer.uuid())
+            .map(player -> player.getLocation())
             .orElse(fakePlayer.location());
         broadcastService.broadcastJoin(fakePlayer.name(), location);
         return true;
@@ -52,16 +51,9 @@ public class FakePlayerLifecycleService {
         }
 
         FakePlayer fp = fakePlayer.get();
-        Location location = manager.getEntity(fp.uuid())
-            .map(Entity::getLocation)
+        Location location = manager.getPlayer(fp.uuid())
+            .map(player -> player.getLocation())
             .orElse(fp.location());
-
-        if (manager.isSpawned(fp.uuid())) {
-            manager.despawnFakePlayer(fp.uuid());
-        }
-        movementService.stop(fp.uuid());
-        store.remove(key.get());
-        store.save();
 
         switch (reason) {
             case DEATH -> {
@@ -70,6 +62,13 @@ public class FakePlayerLifecycleService {
             }
             case DESPAWN -> broadcastService.broadcastLeave(fp.name(), location, false);
         }
+
+        if (manager.isSpawned(fp.uuid())) {
+            manager.despawnFakePlayer(fp.uuid());
+        }
+        movementService.stop(fp.uuid());
+        store.remove(key.get());
+        store.save();
 
         return Optional.of(fp);
     }

@@ -1,16 +1,17 @@
 plugins {
     java
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
 }
 
 group = "dev.distorteduniverse"
-version = "0.9.4.1-dev"
+version = "0.9.5-dev"
 
 val paperApiVersion: String by rootProject.extra
+val paperDevBundle: String = paperApiVersion
 val javaVersion: Int by rootProject.extra
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
-    testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
+    paperweight.paperDevBundle(paperDevBundle)
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -41,5 +42,9 @@ tasks {
 
     jar {
         archiveBaseName.set("DistortedUniverseFakePlayer")
+    }
+
+    reobfJar {
+        isEnabled = false
     }
 }

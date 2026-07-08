@@ -1,35 +1,51 @@
 package dev.distorteduniverse.fakeplayer;
 
-import net.kyori.adventure.text.Component;
-import com.destroystokyo.paper.profile.PlayerProfile;
-import io.papermc.paper.datacomponent.item.ResolvableProfile;
+import dev.distorteduniverse.fakeplayer.nms.NmsFakePlayerSpawner;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Mannequin;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
 public class FakePlayerManager {
+    private final JavaPlugin plugin;
     private final FakePlayerSkinLoader skinLoader;
     private final FakePlayerStore store;
+    private final NmsFakePlayerSpawner spawner;
     private FakePlayerSettings.BehaviorSettings behavior;
-    private final Map<UUID, Mannequin> activeMannequins = new HashMap<>();
+    private FakePlayerSettings.DisplaySettings display;
+    private double movementSpeed = 0.2D;
+    private final Map<UUID, Player> activePlayers = new HashMap<>();
 
     public FakePlayerManager(
+        JavaPlugin plugin,
         FakePlayerSkinLoader skinLoader,
         FakePlayerStore store,
-        FakePlayerSettings.BehaviorSettings behavior
+        NmsFakePlayerSpawner spawner,
+        FakePlayerSettings.BehaviorSettings behavior,
+        FakePlayerSettings.DisplaySettings display
     ) {
+        this.plugin = plugin;
         this.skinLoader = skinLoader;
         this.store = store;
+        this.spawner = spawner;
         this.behavior = behavior;
+        this.display = display;
+    }
+
+    public void updateMovementSpeed(double movementSpeed) {
+        this.movementSpeed = movementSpeed;
     }
 
     public boolean spawnFakePlayer(FakePlayer fakePlayer) {
         UUID uuid = fakePlayer.uuid();
-        if (activeMannequins.containsKey(uuid)) {
+        if (activePlayers.containsKey(uuid)) {
+            return false;
+        }
+
+        if (!spawner.isAvailable()) {
+            plugin.getLogger().severe("NMS fake player spawner is unavailable on this server build.");
             return false;
         }
 
@@ -42,57 +58,65 @@ public class FakePlayerManager {
         world.getChunkAt(location).load(true);
         world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, true);
 
-        Mannequin mannequin = (Mannequin) world.spawnEntity(location, EntityType.MANNEQUIN);
-        if (mannequin == null || mannequin.isDead()) {
+        Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
+        if (skinProperty.isEmpty()) {
+            skinProperty = skinLoader.getSkin("default");
+        }
+
+        Player player = spawner.spawn(
+            uuid,
+            fakePlayer.name(),
+            skinProperty.orElse(null),
+            location
+        );
+
+        if (player == null || !player.isOnline()) {
+            world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
             return false;
         }
 
-        configureBehavior(mannequin);
-        applyAppearance(mannequin, fakePlayer);
-        activeMannequins.put(uuid, mannequin);
+        FakePlayerMarkers.mark(player);
+        configureBehavior(player);
+        applyAppearance(player, fakePlayer.name(), skinProperty);
+        activePlayers.put(uuid, player);
         return true;
     }
 
     public boolean despawnFakePlayer(UUID uuid) {
-        Mannequin mannequin = activeMannequins.remove(uuid);
-        if (mannequin == null) {
+        Player player = activePlayers.remove(uuid);
+        if (player == null) {
             return false;
         }
 
-        World world = mannequin.getWorld();
+        World world = player.getWorld();
         if (world != null) {
-            Location location = mannequin.getLocation();
+            Location location = player.getLocation();
             world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
         }
 
-        if (mannequin.isValid()) {
-            mannequin.remove();
-        }
+        FakePlayerMarkers.unmark(player);
+        spawner.remove(player);
         return true;
     }
 
     public void teleportFakePlayer(UUID uuid, Location newLocation) {
-        getEntity(uuid).ifPresent(entity -> {
-            entity.teleport(newLocation);
+        getPlayer(uuid).ifPresent(player -> {
+            player.teleport(newLocation);
             store.findKeyByUuid(uuid).ifPresent(key ->
                 store.get(key).ifPresent(fp -> store.update(key, fp.withLocation(newLocation)))
             );
         });
     }
 
-    public Optional<Mannequin> getMannequin(UUID fakePlayerUuid) {
-        return getEntity(fakePlayerUuid).map(entity -> (Mannequin) entity);
-    }
-
-    public Optional<Entity> getEntity(UUID fakePlayerUuid) {
-        Mannequin mannequin = activeMannequins.get(fakePlayerUuid);
-        if (mannequin == null || mannequin.isDead()) {
-            if (mannequin != null) {
-                activeMannequins.remove(fakePlayerUuid);
+    public Optional<Player> getPlayer(UUID fakePlayerUuid) {
+        Player player = activePlayers.get(fakePlayerUuid);
+        if (player == null || !player.isOnline() || player.isDead()) {
+            if (player != null) {
+                activePlayers.remove(fakePlayerUuid);
             }
             return Optional.empty();
         }
-        return Optional.of(mannequin);
+        return Optional.of(player);
     }
 
     public Location snapSpawnLocation(Location location) {
@@ -107,47 +131,62 @@ public class FakePlayerManager {
         return snapped;
     }
 
-    private void applyAppearance(Mannequin mannequin, FakePlayer fakePlayer) {
-        mannequin.customName(Component.text(fakePlayer.name()));
-        mannequin.setCustomNameVisible(true);
-        mannequin.setDescription(null);
+    private void applyAppearance(Player player, String name, Optional<SkinProperty> skinProperty) {
+        player.customName(null);
+        player.setCustomNameVisible(false);
+        player.displayName(net.kyori.adventure.text.Component.text(name));
+        player.playerListName(net.kyori.adventure.text.Component.text(name));
 
-        Optional<SkinProperty> skinProperty = skinLoader.getSkin(fakePlayer.skin());
-        if (skinProperty.isEmpty()) {
-            skinProperty = skinLoader.getSkin("default");
-        }
-
-        PlayerProfile profile = skinLoader.createProfile(mannequin.getUniqueId(), fakePlayer.name(), skinProperty.orElse(null));
-        mannequin.setProfile(ResolvableProfile.resolvableProfile(profile));
+        com.destroystokyo.paper.profile.PlayerProfile profile = skinLoader.createProfile(
+            player.getUniqueId(),
+            name,
+            skinProperty.orElse(null)
+        );
+        player.setPlayerProfile(profile);
     }
 
     public void setMovementActive(UUID uuid, boolean active) {
-        getMannequin(uuid).ifPresent(mannequin ->
-            mannequin.setImmovable(active ? false : behavior.immovable())
-        );
+        getPlayer(uuid).ifPresent(player -> {
+            if (active) {
+                player.setWalkSpeed((float) Math.max(0.01F, movementSpeed));
+            } else if (behavior.immovable()) {
+                player.setWalkSpeed(0.0F);
+            } else {
+                player.setWalkSpeed(0.2F);
+            }
+        });
     }
 
-    private void configureBehavior(Mannequin mannequin) {
-        mannequin.setInvulnerable(behavior.invulnerable());
-        mannequin.setGravity(behavior.gravity());
-        mannequin.setImmovable(behavior.immovable());
+    private void configureBehavior(Player player) {
+        player.setInvulnerable(behavior.invulnerable());
+        player.setGravity(behavior.gravity());
+        if (behavior.immovable()) {
+            player.setWalkSpeed(0.0F);
+        }
     }
 
     public boolean isSpawned(UUID uuid) {
-        return getEntity(uuid).isPresent();
+        return getPlayer(uuid).isPresent();
     }
 
     public Collection<UUID> getSpawnedUuids() {
-        return Collections.unmodifiableCollection(new HashSet<>(activeMannequins.keySet()));
+        return Collections.unmodifiableCollection(new HashSet<>(activePlayers.keySet()));
     }
 
     public boolean isManagedEntity(UUID entityUuid) {
-        return activeMannequins.values().stream()
-            .anyMatch(mannequin -> mannequin.getUniqueId().equals(entityUuid));
+        Player player = activePlayers.get(entityUuid);
+        if (player != null && player.getUniqueId().equals(entityUuid)) {
+            return true;
+        }
+        return activePlayers.values().stream()
+            .anyMatch(candidate -> candidate.getUniqueId().equals(entityUuid));
     }
 
     public Optional<UUID> getFakePlayerUuid(UUID entityUuid) {
-        return activeMannequins.entrySet().stream()
+        if (activePlayers.containsKey(entityUuid)) {
+            return Optional.of(entityUuid);
+        }
+        return activePlayers.entrySet().stream()
             .filter(entry -> entry.getValue().getUniqueId().equals(entityUuid))
             .map(Map.Entry::getKey)
             .findFirst();
@@ -155,14 +194,12 @@ public class FakePlayerManager {
 
     public void updateBehavior(FakePlayerSettings.BehaviorSettings newBehavior) {
         this.behavior = newBehavior;
-        for (UUID fakeUuid : new ArrayList<>(activeMannequins.keySet())) {
-            getEntity(fakeUuid).ifPresent(entity -> {
-                if (entity instanceof Mannequin mannequin) {
-                    mannequin.setGravity(newBehavior.gravity());
-                    mannequin.setImmovable(newBehavior.immovable());
-                    mannequin.setInvulnerable(newBehavior.invulnerable());
-                }
-            });
+        for (UUID fakeUuid : new ArrayList<>(activePlayers.keySet())) {
+            getPlayer(fakeUuid).ifPresent(this::configureBehavior);
         }
+    }
+
+    public void updateDisplay(FakePlayerSettings.DisplaySettings newDisplay) {
+        this.display = newDisplay;
     }
 }

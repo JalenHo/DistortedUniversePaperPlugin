@@ -6,6 +6,7 @@ public record FakePlayerSettings(
     boolean enabled,
     MovementSettings movement,
     BehaviorSettings behavior,
+    DisplaySettings display,
     MessagesSettings messages,
     SkinsSettings skins
 ) {
@@ -14,16 +15,18 @@ public record FakePlayerSettings(
             getBoolean(config, "enabled", true),
             MovementSettings.from(config.getConfigurationSection("movement"), config.getConfigurationSection("wandering")),
             BehaviorSettings.from(config.getConfigurationSection("behavior")),
+            DisplaySettings.from(config.getConfigurationSection("display")),
             MessagesSettings.from(config.getConfigurationSection("messages")),
             SkinsSettings.from(config.getConfigurationSection("skins"))
         );
     }
 
     public void writeTo(ConfigurationSection config) {
-        config.set("config-version", 3);
+        config.set("config-version", 4);
         config.set("enabled", enabled);
         movement.writeTo(config.createSection("movement"));
         behavior.writeTo(config.createSection("behavior"));
+        display.writeTo(config.createSection("display"));
         messages.writeTo(config.createSection("messages"));
         skins.writeTo(config.createSection("skins"));
     }
@@ -55,6 +58,21 @@ public record FakePlayerSettings(
             config.set("knockback-when-invulnerable", knockbackWhenInvulnerable);
             config.set("gravity", gravity);
             config.set("immovable", immovable);
+        }
+    }
+
+    public record DisplaySettings(
+        boolean tabList
+    ) {
+        public static DisplaySettings from(ConfigurationSection config) {
+            if (config == null) {
+                return new DisplaySettings(false);
+            }
+            return new DisplaySettings(getBoolean(config, "tab-list", false));
+        }
+
+        public void writeTo(ConfigurationSection config) {
+            config.set("tab-list", tabList);
         }
     }
 

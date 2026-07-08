@@ -2,7 +2,7 @@ package dev.distorteduniverse.fakeplayer;
 
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Mannequin;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -104,14 +104,14 @@ public class BotMovementService {
             return;
         }
 
-        Optional<Mannequin> entity = manager.getMannequin(uuid);
+        Optional<Player> entity = manager.getPlayer(uuid);
         if (entity.isEmpty()) {
             stop(uuid);
             return;
         }
 
-        Mannequin mannequin = entity.get();
-        Location current = mannequin.getLocation();
+        Player player = entity.get();
+        Location current = player.getLocation();
         Location target = state.target;
         if (target == null || target.getWorld() == null || current.getWorld() == null) {
             stop(uuid);
@@ -145,7 +145,7 @@ public class BotMovementService {
             return;
         }
 
-        mannequin.teleport(next);
+        player.teleport(next);
         updateStoredLocation(storeKey, next);
     }
 

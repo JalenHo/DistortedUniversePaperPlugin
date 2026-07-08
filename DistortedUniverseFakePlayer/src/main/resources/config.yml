@@ -1,6 +1,9 @@
-config-version: 3
+config-version: 4
 
 enabled: true
+
+display:
+  tab-list: false
 
 movement:
   speed: 0.2
