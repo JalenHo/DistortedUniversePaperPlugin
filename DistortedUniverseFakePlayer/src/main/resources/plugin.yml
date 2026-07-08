@@ -7,7 +7,7 @@ author: hokay
 commands:
   dfp:
     description: Manage fake players.
-    usage: /dfp <spawn|despawn|move|list|reload>
+    usage: /dfp <spawn|despawn|move|list|reload|config|set>
     aliases:
       - dfakeplayer
       - dfp

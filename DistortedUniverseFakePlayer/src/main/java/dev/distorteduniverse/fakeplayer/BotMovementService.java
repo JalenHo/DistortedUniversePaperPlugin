@@ -23,6 +23,7 @@ public class BotMovementService {
     private final FakePlayerStore store;
     private FakePlayerSettings.MovementSettings settings;
     private final Map<UUID, MovementState> activeTasks = new HashMap<>();
+    private final Map<UUID, Integer> physicsPauseTicks = new HashMap<>();
     private final Random random = new Random();
 
     public BotMovementService(
@@ -47,7 +48,7 @@ public class BotMovementService {
         state.target = pickWanderTarget(updated.location(), radius);
         activeTasks.put(updated.uuid(), state);
         manager.setMovementActive(updated.uuid(), true);
-        state.task.runTaskTimer(plugin, 0L, settings.tickInterval());
+        state.start(settings.tickInterval());
     }
 
     public void startMoveTo(String key, FakePlayer fakePlayer, Location destination) {
@@ -60,36 +61,61 @@ public class BotMovementService {
         state.target = destination.clone();
         activeTasks.put(updated.uuid(), state);
         manager.setMovementActive(updated.uuid(), true);
-        state.task.runTaskTimer(plugin, 0L, settings.tickInterval());
+        state.start(settings.tickInterval());
     }
 
     public void stop(UUID uuid) {
+        stop(uuid, true);
+    }
+
+    public void stop(UUID uuid, boolean clearWandering) {
         MovementState state = activeTasks.remove(uuid);
         if (state != null) {
-            state.task.cancel();
+            state.cancel();
         }
 
+        physicsPauseTicks.remove(uuid);
         manager.setMovementActive(uuid, false);
-        store.findKeyByUuid(uuid).ifPresent(key ->
-            store.get(key).ifPresent(fp -> store.update(key, fp.withWandering(false)))
-        );
+        if (clearWandering) {
+            store.findKeyByUuid(uuid).ifPresent(key ->
+                store.get(key).ifPresent(fp -> store.update(key, fp.withWandering(false)))
+            );
+        }
     }
 
     public void stopAll() {
+        stopAll(true);
+    }
+
+    public void stopAll(boolean clearWandering) {
         for (UUID uuid : activeTasks.keySet().toArray(new UUID[0])) {
-            stop(uuid);
+            stop(uuid, clearWandering);
         }
     }
 
     public void updateSettings(FakePlayerSettings.MovementSettings newSettings) {
-        if (!activeTasks.isEmpty()) {
-            stopAll();
-        }
+        int oldTickInterval = settings.tickInterval();
         this.settings = newSettings;
+        if (oldTickInterval != newSettings.tickInterval()) {
+            for (MovementState state : activeTasks.values()) {
+                state.restart(newSettings.tickInterval());
+            }
+        }
     }
 
     public boolean isMoving(UUID uuid) {
         return activeTasks.containsKey(uuid);
+    }
+
+    public void pauseForPhysics(UUID uuid, int ticks) {
+        physicsPauseTicks.put(uuid, Math.max(physicsPauseTicks.getOrDefault(uuid, 0), ticks));
+    }
+
+    public void updateStoreKey(UUID uuid, String newKey) {
+        MovementState state = activeTasks.get(uuid);
+        if (state != null) {
+            state.storeKey = newKey;
+        }
     }
 
     private void onTick(String storeKey) {
@@ -112,6 +138,11 @@ public class BotMovementService {
 
         Mannequin mannequin = entity.get();
         Location current = mannequin.getLocation();
+        if (consumePhysicsPause(uuid)) {
+            updateStoredLocation(state.storeKey, current);
+            return;
+        }
+
         Location target = state.target;
         if (target == null || target.getWorld() == null || current.getWorld() == null) {
             stop(uuid);
@@ -137,7 +168,7 @@ public class BotMovementService {
 
         Location next = stepToward(current, target, settings.speed());
         mannequin.teleport(next);
-        updateStoredLocation(storeKey, next);
+        updateStoredLocation(state.storeKey, next);
     }
 
     private Location stepToward(Location current, Location target, double speed) {
@@ -152,17 +183,8 @@ public class BotMovementService {
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
 
         Location next = new Location(world, nx, current.getY(), nz, yaw, current.getPitch());
-        next.setY(snapToGround(world, nx, nz, current.getY()));
+        next.setY(WaterPhysics.walkingY(world, nx, nz, current.getY()));
         return next;
-    }
-
-    private double snapToGround(World world, double x, double z, double fallbackY) {
-        int groundY = world.getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z));
-        double snapped = groundY + 1.0;
-        if (snapped < world.getMinHeight()) {
-            return fallbackY;
-        }
-        return snapped;
     }
 
     private Location pickWanderTarget(Location origin, double radius) {
@@ -171,8 +193,23 @@ public class BotMovementService {
         double x = origin.getX() + Math.cos(angle) * distance;
         double z = origin.getZ() + Math.sin(angle) * distance;
         World world = origin.getWorld();
-        double y = snapToGround(world, x, z, origin.getY());
+        double y = WaterPhysics.walkingY(world, x, z, origin.getY());
         return new Location(world, x, y, z);
+    }
+
+    private boolean consumePhysicsPause(UUID uuid) {
+        Integer ticks = physicsPauseTicks.get(uuid);
+        if (ticks == null || ticks <= 0) {
+            physicsPauseTicks.remove(uuid);
+            return false;
+        }
+
+        if (ticks == 1) {
+            physicsPauseTicks.remove(uuid);
+        } else {
+            physicsPauseTicks.put(uuid, ticks - 1);
+        }
+        return true;
     }
 
     private double horizontalDistance(Location a, Location b) {
@@ -186,24 +223,40 @@ public class BotMovementService {
     }
 
     private final class MovementState {
-        private final String storeKey;
+        private String storeKey;
         private final UUID uuid;
         private final Mode mode;
         private final double wanderRadius;
         private Location target;
-        private final BukkitRunnable task;
+        private BukkitRunnable task;
 
         private MovementState(String storeKey, UUID uuid, Mode mode, double wanderRadius) {
             this.storeKey = storeKey;
             this.uuid = uuid;
             this.mode = mode;
             this.wanderRadius = wanderRadius;
+        }
+
+        private void start(int tickInterval) {
             this.task = new BukkitRunnable() {
                 @Override
                 public void run() {
-                    BotMovementService.this.onTick(storeKey);
+                    BotMovementService.this.onTick(MovementState.this.storeKey);
                 }
             };
+            this.task.runTaskTimer(plugin, 0L, tickInterval);
+        }
+
+        private void cancel() {
+            if (task != null) {
+                task.cancel();
+                task = null;
+            }
+        }
+
+        private void restart(int tickInterval) {
+            cancel();
+            start(tickInterval);
         }
     }
 }

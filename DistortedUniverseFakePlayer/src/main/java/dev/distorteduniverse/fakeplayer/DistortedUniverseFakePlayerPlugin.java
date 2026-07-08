@@ -11,6 +11,7 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
     private FakePlayerStore store;
     private FakePlayerManager manager;
     private BotMovementService movementService;
+    private FakePlayerLifecycleService lifecycleService;
     private FakePlayerListener listener;
 
     @Override
@@ -37,20 +38,31 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             settingsService.settings().movement()
         );
 
-        listener = new FakePlayerListener(manager, settingsService);
+        lifecycleService = new FakePlayerLifecycleService(this, manager, store);
+
+        listener = new FakePlayerListener(this, manager, movementService, settingsService);
         getServer().getPluginManager().registerEvents(listener, this);
 
         FakePlayerCommand command = new FakePlayerCommand(this);
         getCommand("dfp").setExecutor(command);
         getCommand("dfp").setTabCompleter(command);
 
-        respawnAllFakePlayers();
+        applyRuntimeSettings();
+        lifecycleService.start();
 
         getLogger().info("DistortedUniverseFakePlayer enabled!");
     }
 
     @Override
     public void onDisable() {
+        if (lifecycleService != null) {
+            lifecycleService.stop();
+        }
+
+        if (movementService != null) {
+            movementService.stopAll(false);
+        }
+
         if (store != null && manager != null) {
             for (var uuid : new ArrayList<>(manager.getSpawnedUuids())) {
                 manager.despawnFakePlayer(uuid);
@@ -58,16 +70,20 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
             store.save();
         }
 
-        if (movementService != null) {
-            movementService.stopAll();
-        }
-
         getLogger().info("DistortedUniverseFakePlayer disabled!");
     }
 
-    private void respawnAllFakePlayers() {
+    public void applyRuntimeSettings() {
         FakePlayerSettings settings = settingsService.settings();
+        skinLoader.load(settings.skins());
+        movementService.updateSettings(settings.movement());
+        manager.updateBehavior(settings.behavior());
+
         if (!settings.enabled()) {
+            movementService.stopAll(false);
+            for (var uuid : new ArrayList<>(manager.getSpawnedUuids())) {
+                manager.despawnFakePlayer(uuid);
+            }
             getLogger().warning("Plugin is disabled in config!");
             return;
         }
@@ -79,14 +95,15 @@ public class DistortedUniverseFakePlayerPlugin extends JavaPlugin {
                 continue;
             }
             FakePlayer fp = opt.get();
-            if (manager.spawnFakePlayer(fp)) {
-                if (fp.isWandering()) {
-                    movementService.startWandering(key, fp, settings.movement().wanderRadius());
-                }
+            if (!manager.isSpawned(fp.uuid()) && manager.spawnFakePlayer(fp)) {
                 spawned++;
             }
+            manager.refreshAppearance(fp);
+            if (fp.isWandering() && manager.isSpawned(fp.uuid()) && !movementService.isMoving(fp.uuid())) {
+                movementService.startWandering(key, fp, settings.movement().wanderRadius());
+            }
         }
-        getLogger().info("Respawned " + spawned + " fake players");
+        getLogger().info("Synced fake players; spawned " + spawned + " missing entities");
     }
 
     public FakePlayerSettingsService getSettingsService() {

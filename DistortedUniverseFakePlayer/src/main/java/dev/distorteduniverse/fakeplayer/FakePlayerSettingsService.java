@@ -26,6 +26,11 @@ public class FakePlayerSettingsService {
         plugin.saveConfig();
     }
 
+    public void update(FakePlayerSettings settings) {
+        this.settings = settings;
+        save();
+    }
+
     public FakePlayerSettings settings() {
         return settings;
     }

@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mannequin;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 
@@ -58,15 +59,21 @@ public class FakePlayerManager {
             return false;
         }
 
-        World world = mannequin.getWorld();
-        if (world != null) {
-            Location location = mannequin.getLocation();
-            world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
-        }
+        releaseChunk(mannequin);
 
         if (mannequin.isValid()) {
             mannequin.remove();
         }
+        return true;
+    }
+
+    public boolean unregisterFakePlayer(UUID uuid) {
+        Mannequin mannequin = activeMannequins.remove(uuid);
+        if (mannequin == null) {
+            return false;
+        }
+
+        releaseChunk(mannequin);
         return true;
     }
 
@@ -120,6 +127,35 @@ public class FakePlayerManager {
         mannequin.setProfile(ResolvableProfile.resolvableProfile(profile));
     }
 
+    public void refreshAppearance(FakePlayer fakePlayer) {
+        getMannequin(fakePlayer.uuid()).ifPresent(mannequin -> applyAppearance(mannequin, fakePlayer));
+    }
+
+    public void refreshAllAppearances(Collection<FakePlayer> fakePlayers) {
+        for (FakePlayer fakePlayer : fakePlayers) {
+            refreshAppearance(fakePlayer);
+        }
+    }
+
+    public void applyKnockback(UUID uuid, Location source, double strength) {
+        getMannequin(uuid).ifPresent(mannequin -> {
+            Vector direction = mannequin.getLocation().toVector().subtract(source.toVector());
+            direction.setY(0);
+            if (direction.lengthSquared() < 0.0001) {
+                direction = mannequin.getLocation().getDirection().multiply(-1);
+                direction.setY(0);
+            }
+            if (direction.lengthSquared() < 0.0001) {
+                direction = new Vector(0, 0, 1);
+            }
+
+            Vector velocity = direction.normalize().multiply(strength);
+            velocity.setY(Math.max(0.32, mannequin.getVelocity().getY() + 0.20));
+            mannequin.setImmovable(false);
+            mannequin.setVelocity(velocity);
+        });
+    }
+
     public void setMovementActive(UUID uuid, boolean active) {
         getMannequin(uuid).ifPresent(mannequin ->
             mannequin.setImmovable(active ? false : behavior.immovable())
@@ -163,5 +199,15 @@ public class FakePlayerManager {
                 }
             });
         }
+    }
+
+    private void releaseChunk(Mannequin mannequin) {
+        World world = mannequin.getWorld();
+        if (world == null) {
+            return;
+        }
+
+        Location location = mannequin.getLocation();
+        world.setChunkForceLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4, false);
     }
 }

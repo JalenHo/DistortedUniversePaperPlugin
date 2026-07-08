@@ -11,6 +11,10 @@ public record FakePlayer(
     String skin,
     boolean isWandering
 ) {
+    public FakePlayer withName(String newName) {
+        return new FakePlayer(newName, uuid, location, skin, isWandering);
+    }
+
     public FakePlayer withLocation(Location newLocation) {
         return new FakePlayer(name, uuid, newLocation, skin, isWandering);
     }

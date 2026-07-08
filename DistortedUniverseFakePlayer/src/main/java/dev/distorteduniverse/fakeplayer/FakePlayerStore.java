@@ -86,6 +86,16 @@ public class FakePlayerStore {
         players.remove(key);
     }
 
+    public boolean rename(String oldKey, String newKey, FakePlayer player) {
+        if (!oldKey.equals(newKey) && players.containsKey(newKey)) {
+            return false;
+        }
+
+        players.remove(oldKey);
+        players.put(newKey, player);
+        return true;
+    }
+
     public Optional<FakePlayer> get(String key) {
         return Optional.ofNullable(players.get(key));
     }
